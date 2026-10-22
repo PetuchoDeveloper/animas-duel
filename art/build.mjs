@@ -6,6 +6,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { packSheet, writePng } from './lib/sheet.mjs';
 import { Img, blit } from './lib/raster.mjs';
 import { packEffects } from './fx.mjs';
+import { solve2 } from './lib/kof.mjs';
 import { STAGES } from './stages.mjs';
 import { writeUi } from './ui.mjs';
 
@@ -28,8 +29,11 @@ for (const [row, id] of IDS.entries()) {
   console.log(`${id}: ${image.w}x${image.h}, ${Object.keys(anims).length} animations`);
 
   Object.values(MOODS).forEach((face, col) => {
-    const frame = mod.drawFrame(mod.portrait.pose(face));
-    const [bx, by] = mod.portrait.box;
+    const pz = mod.portrait.pose(face);
+    const frame = mod.drawFrame(pz);
+    // a bust: the head sits just left of centre and a little low, so ears, hats and sprouts fit above it
+    const hd = solve2(mod.S, pz).head;
+    const bx = Math.round(hd[0] - 30), by = Math.round(hd[1] - 36);
     const crop = new Img(PORTRAIT, PORTRAIT);
     for (let y = 0; y < PORTRAIT; y++) for (let x = 0; x < PORTRAIT; x++) crop.px[y * PORTRAIT + x] = frame.get(bx + x, by + y);
     blit(sheet, crop, col * PORTRAIT, row * PORTRAIT);

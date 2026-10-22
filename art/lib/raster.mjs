@@ -179,7 +179,7 @@ export function poly(img, pts, paint, ink = 0, depth = 3.2) {
   }
 }
 
-function pointInPoly(px, py, pts) {
+export function pointInPoly(px, py, pts) {
   let inside = false;
   for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
     const [xi, yi] = pts[i];

@@ -2,24 +2,24 @@
  "fighters": {
   "bean": {
    "cell": [
-    128,
-    112
+    160,
+    144
    ],
    "anchor": [
-    64,
-    100
+    80,
+    130
    ],
    "anims": {
     "idle": {
      "row": 0,
-     "frames": 4,
-     "fps": 6,
+     "frames": 6,
+     "fps": 8,
      "loop": true
     },
     "walk": {
      "row": 1,
-     "frames": 6,
-     "fps": 11,
+     "frames": 8,
+     "fps": 12,
      "loop": true
     },
     "jump": {
@@ -36,17 +36,17 @@
     },
     "light": {
      "row": 4,
-     "frames": 4,
-     "fps": 12,
+     "frames": 5,
+     "fps": 14,
      "loop": false,
      "strike": [
-      1,
-      2
+      2,
+      3
      ]
     },
     "heavy": {
      "row": 5,
-     "frames": 5,
+     "frames": 6,
      "fps": 10,
      "loop": false,
      "strike": [
@@ -76,12 +76,12 @@
     },
     "super": {
      "row": 8,
-     "frames": 6,
+     "frames": 7,
      "fps": 8,
      "loop": false,
      "strike": [
       4,
-      4
+      5
      ]
     },
     "hit": {
@@ -124,24 +124,24 @@
   },
   "flea": {
    "cell": [
-    128,
-    112
+    160,
+    144
    ],
    "anchor": [
-    64,
-    100
+    80,
+    130
    ],
    "anims": {
     "idle": {
      "row": 0,
-     "frames": 4,
-     "fps": 6,
+     "frames": 6,
+     "fps": 8,
      "loop": true
     },
     "walk": {
      "row": 1,
-     "frames": 6,
-     "fps": 11,
+     "frames": 8,
+     "fps": 12,
      "loop": true
     },
     "jump": {
@@ -158,17 +158,17 @@
     },
     "light": {
      "row": 4,
-     "frames": 4,
-     "fps": 12,
+     "frames": 5,
+     "fps": 14,
      "loop": false,
      "strike": [
-      1,
-      2
+      2,
+      3
      ]
     },
     "heavy": {
      "row": 5,
-     "frames": 5,
+     "frames": 6,
      "fps": 10,
      "loop": false,
      "strike": [
@@ -198,7 +198,7 @@
     },
     "super": {
      "row": 8,
-     "frames": 6,
+     "frames": 7,
      "fps": 8,
      "loop": false,
      "strike": [
@@ -246,23 +246,23 @@
   },
   "ernesto": {
    "cell": [
-    128,
-    112
+    160,
+    144
    ],
    "anchor": [
-    64,
-    100
+    80,
+    130
    ],
    "anims": {
     "idle": {
      "row": 0,
-     "frames": 4,
-     "fps": 6,
+     "frames": 6,
+     "fps": 7,
      "loop": true
     },
     "walk": {
      "row": 1,
-     "frames": 6,
+     "frames": 8,
      "fps": 11,
      "loop": true
     },
@@ -280,17 +280,17 @@
     },
     "light": {
      "row": 4,
-     "frames": 4,
-     "fps": 12,
+     "frames": 5,
+     "fps": 13,
      "loop": false,
      "strike": [
-      1,
-      2
+      2,
+      3
      ]
     },
     "heavy": {
      "row": 5,
-     "frames": 5,
+     "frames": 6,
      "fps": 10,
      "loop": false,
      "strike": [
@@ -320,12 +320,12 @@
     },
     "super": {
      "row": 8,
-     "frames": 6,
+     "frames": 7,
      "fps": 8,
      "loop": false,
      "strike": [
-      3,
-      4
+      4,
+      5
      ]
     },
     "hit": {
@@ -368,24 +368,24 @@
   },
   "elmacho": {
    "cell": [
-    128,
-    112
+    160,
+    144
    ],
    "anchor": [
-    64,
-    100
+    80,
+    130
    ],
    "anims": {
     "idle": {
      "row": 0,
-     "frames": 4,
-     "fps": 6,
+     "frames": 6,
+     "fps": 7,
      "loop": true
     },
     "walk": {
      "row": 1,
-     "frames": 6,
-     "fps": 9,
+     "frames": 8,
+     "fps": 11,
      "loop": true
     },
     "jump": {
@@ -402,17 +402,17 @@
     },
     "light": {
      "row": 4,
-     "frames": 4,
+     "frames": 5,
      "fps": 12,
      "loop": false,
      "strike": [
-      1,
-      2
+      2,
+      3
      ]
     },
     "heavy": {
      "row": 5,
-     "frames": 5,
+     "frames": 6,
      "fps": 10,
      "loop": false,
      "strike": [
@@ -442,7 +442,7 @@
     },
     "super": {
      "row": 8,
-     "frames": 6,
+     "frames": 7,
      "fps": 8,
      "loop": false,
      "strike": [
@@ -490,23 +490,23 @@
   },
   "huesos": {
    "cell": [
-    128,
-    112
+    160,
+    144
    ],
    "anchor": [
-    64,
-    100
+    80,
+    130
    ],
    "anims": {
     "idle": {
      "row": 0,
-     "frames": 4,
-     "fps": 6,
+     "frames": 6,
+     "fps": 7,
      "loop": true
     },
     "walk": {
      "row": 1,
-     "frames": 6,
+     "frames": 8,
      "fps": 11,
      "loop": true
     },
@@ -524,17 +524,17 @@
     },
     "light": {
      "row": 4,
-     "frames": 4,
-     "fps": 12,
+     "frames": 5,
+     "fps": 13,
      "loop": false,
      "strike": [
-      1,
-      2
+      2,
+      3
      ]
     },
     "heavy": {
      "row": 5,
-     "frames": 5,
+     "frames": 6,
      "fps": 10,
      "loop": false,
      "strike": [
@@ -564,7 +564,7 @@
     },
     "super": {
      "row": 8,
-     "frames": 6,
+     "frames": 7,
      "fps": 8,
      "loop": false,
      "strike": [

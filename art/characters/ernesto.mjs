@@ -1,277 +1,219 @@
-// Ernesto "El Catrín Cantor": a tall skeleton mariachi in an ivory charro suit and a wide sombrero,
-// armed with a guitar that doubles as a club. The sombrero flies off when he goes down.
-import { C, ellipse, capsule, poly, line, stamp, part } from '../lib/raster.mjs';
-import { newFrame, pose, deg, ANCHOR_X, ANCHOR_Y } from '../lib/rig.mjs';
-import { solve, limb, lit, stock } from '../lib/humanoid.mjs';
+// Ernesto "El Mariachi Calavera": a tall skeleton charro in an ivory bolero, violet trousers with a row of gold
+// buttons, a dark sombrero trimmed in gold, and a guitar he wears on his back and swings as a club.
+// King of Fighters cel shading, a hand-drawn skull, glowing violet eyes.
+import { C, poly, line, stamp, part, mix } from '../lib/raster.mjs';
+import { newFrame, pose } from '../lib/rig.mjs';
+import { ramp, cel, blob, cap, ell, ribbon, solve2, onTorso, stock2, drawArm, drawLeg, drawSkull, paintOver, flatPoly } from '../lib/kof.mjs';
 
-const SUIT = { d: '#5e4f3e', s: '#9a8a70', m: '#d6c6a0', l: '#ede0c0', h: '#fff8e2', ink: '#33281c' };
-const BONE = { d: '#6e6c82', s: '#aaa8bc', m: '#dcd8cc', l: '#f2eee0', h: '#ffffff', ink: '#2e2640' };
-const GOLD = { d: '#5e3f06', s: '#a8760e', m: '#e2b028', l: '#ffd856', h: '#fff0a0', ink: '#42290a' };
-const CLOAK = { d: '#120c20', s: '#221438', m: '#38245c', l: '#55398a', h: '#7c5cb8', ink: '#08040f' };
-const BOOT = { d: '#160c06', s: '#2e1a0c', m: '#4e2e16', l: '#744626', h: '#a06a3c', ink: '#0c0603' };
-const WOOD = { d: '#44200c', s: '#7a3818', m: '#b45c26', l: '#de8a3e', h: '#ffbe6c', ink: '#2c1206' };
-const TIE = { d: '#4a0c1a', s: '#8a1c2e', m: '#c4303c', l: '#ee5a52', h: '#ff9a84', ink: '#2e0710' };
-const HAIR = { d: '#08060e', s: '#14101e', m: '#241c34', l: '#3a2e54', h: '#54457a', ink: '#05030a' };
+const BONE = ramp('#eee8d6', { k: 0.9 });
+const SUIT = ramp('#efe4c2', { k: 0.85 });
+const PANTS = ramp('#44309a');
+const HAT = ramp('#33225e');
+const GOLD = ramp('#f2c24a');
+const BOW = ramp('#d83a50');
+const SASH = ramp('#8a2a8c');
+const BOOT = ramp('#6e3a22');
+const WOOD = ramp('#d07a2c');
+const NECK = ramp('#5a3418');
+const GLOW = ramp('#c890ff');
 
-const PAL = { k: C('#120a1c'), p: C('#c46bff'), P: C('#f0c8ff'), w: C('#f6f2e4'), g: C('#6e6c82'), r: C('#8a1c2e') };
+const PAL = {
+  x: C('#1a1030'), v: C('#c890ff'), h: C('#ffffff'), g: C(GOLD.m), b: C(BONE.m), s: C(BONE.s), d: C(BONE.d), k: C(BONE.ink), t: C(BONE.l),
+};
 
 export const meta = { id: 'ernesto', name: 'Ernesto' };
 
-const S = { thigh: 16, shin: 16, torso: 21, neck: 1.5, headR: 10, upper: 12, fore: 12, hipH: 30, shoulderDrop: 3, shoulderDepth: 4.5, hipDepth: 3 };
+export const S = { thigh: 21, shin: 21, torso: 26, neck: 2.5, headR: 9, upper: 13.5, fore: 12.5, hipH: 41, shoulderDrop: 4, shoulderDepth: 7, hipDepth: 4 };
 
-// Eye sockets glow violet, looking right.
-const SOCK = ['.kkkk.', 'kkkkkk', 'kkpppk', 'kkpPpk', 'kkkkkk', '.kkkk.'];
-const SOCK_WIDE = ['.kkkkk.', 'kkkkkkk', 'kkkpppk', 'kkkpPpk', 'kkkkkkk', '.kkkkk.'];
-const SOCK_X = ['k...k', '.k.k.', '..k..', '.k.k.', 'k...k'];
-const SOCK_HURT_L = ['kk...', '.kk..', '..kk.', '.kk..', 'kk...'];
-const SOCK_HURT_R = ['...kk', '..kk.', '.kk..', '..kk.', '...kk'];
-const SOCK_HAPPY = ['.kkkk.', 'kk..kk'];
-const SOCK_SHUT = ['kkkkk'];
-const NOSE = ['.k.', 'kkk'];
+const ARM = [3.5, 4, 3.3, 3.5, 2.8];
+const LEG = [5.6, 5.8, 4.4, 4.8, 3.5];
 
-function guitar(L, g) {
-  const a = deg(g.ang);
+/** Guitar centred on (cx, cy), neck pointing along `ang` (degrees, 0 = right). */
+function guitar(img, cx, cy, ang, sc = 1) {
+  const a = (ang * Math.PI) / 180;
   const d = [Math.cos(a), Math.sin(a)], n = [-d[1], d[0]];
-  const c = [ANCHOR_X + g.x, ANCHOR_Y + g.y];
-  const at = (t, o = 0) => [c[0] + d[0] * t + n[0] * o, c[1] + d[1] * t + n[1] * o];
-  const lo = at(-2.5), up = at(8.5), nk0 = at(12), nk1 = at(33), hs = at(36);
-  // neck and headstock first, body over them
-  capsule(L, nk0[0], nk0[1], nk1[0], nk1[1], 1.9, 1.7, lit(BOOT), BOOT.ink);
-  capsule(L, nk1[0], nk1[1], hs[0], hs[1], 2.8, 2.4, lit(BOOT), BOOT.ink);
-  capsule(L, lo[0], lo[1], up[0], up[1], 6, 4.8, lit(WOOD, { dither: true }), WOOD.ink);
-  ellipse(L, lo[0], lo[1], 8.4, 8.4, lit(WOOD, { dither: true }), WOOD.ink);
-  ellipse(L, up[0], up[1], 6.2, 6.2, lit(WOOD, { dither: true }), WOOD.ink);
-  const sh = at(3);
-  ellipse(L, sh[0], sh[1], 3.4, 3.4, () => C('#1c0a04'), WOOD.ink);
-  ellipse(L, sh[0], sh[1], 4.8, 4.8, (i) => ((i.q > 0.5 && i.q < 0.9) ? C(GOLD.m) : null));
-  const br = at(-6.5);
-  line(L, br[0] - n[0] * 3.5, br[1] - n[1] * 3.5, br[0] + n[0] * 3.5, br[1] + n[1] * 3.5, C(BOOT.s));
-  const s0 = at(3), s1 = at(34);
-  line(L, s0[0], s0[1], s1[0], s1[1], C('#f2ecd8'));
-  for (let t = 16; t < 32; t += 5) { const f = at(t); L.set(Math.round(f[0] + n[0]), Math.round(f[1] + n[1]), C(GOLD.l)); }
-}
-
-function sombrero(L, h, lying) {
-  const [x, y] = h;
-  if (lying) {
-    ellipse(L, x, y, 17, 4.2, lit(SUIT), SUIT.ink);
-    ellipse(L, x, y - 2, 6.5, 4.4, lit(SUIT), SUIT.ink);
-    capsule(L, x - 6, y - 0.5, x + 6, y - 0.5, 1, 1, lit(GOLD), GOLD.ink);
-    return;
-  }
-  ellipse(L, x, y, 21, 4.8, lit(SUIT, { dither: true }), SUIT.ink);
-  ellipse(L, x, y - 5.2, 9, 7.2, lit(SUIT, { dither: true }), SUIT.ink);
-  // gold hat band and trim along the brim
-  for (let dx = -8; dx <= 8; dx++) {
-    const by = y - 0.6 + 0.04 * dx * dx * 0.2;
-    L.set(Math.round(x + dx), Math.round(by), C(GOLD.m), GOLD.ink);
-    L.set(Math.round(x + dx), Math.round(by) - 1, C((dx & 1) ? GOLD.l : GOLD.s), GOLD.ink);
-  }
-  for (let dx = -19; dx <= 19; dx += 3) {
-    const ey = y + 1.7 * Math.sqrt(Math.max(0, 1 - (dx / 21) ** 2)) * 1.9;
-    L.set(Math.round(x + dx), Math.round(ey), C(GOLD.m));
-  }
-}
-
-/** Gold charro stripe down the outside of a leg. */
-function stripe(L, hip, j) {
-  const seg = (a, b, off) => {
-    const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len;
-    for (let t = 0.1; t < 1; t += 0.12) L.set(Math.round(a[0] + dx * t + nx * off), Math.round(a[1] + dy * t + ny * off), C(GOLD.m));
-  };
-  seg(hip, [j.ex, j.ey], -3.6);
-  seg([j.ex, j.ey], [j.hx, j.hy], -3);
+  const at = (t, o = 0) => [cx + d[0] * t * sc + n[0] * o * sc, cy + d[1] * t * sc + n[1] * o * sc];
+  part(img, (L) => {
+    blob(L, [cap(at(2), at(30), 1.8 * sc, 1.6 * sc)], cel(NECK), NECK.ink); // neck
+    blob(L, [cap(at(29), at(34), 2.6 * sc, 2.4 * sc)], cel(NECK), NECK.ink); // headstock
+    blob(L, [ell(at(-8), 9 * sc, 9.6 * sc, a), ell(at(2.5), 6.4 * sc, 7 * sc, a)], cel(WOOD), WOOD.ink); // body
+    blob(L, [ell(at(-3), 3 * sc, 3 * sc)], cel(NECK), NECK.ink); // sound hole
+    blob(L, [cap(at(-12, -1), at(-12, 1), 1.2 * sc)], cel(GOLD), GOLD.ink); // bridge
+    line(L, ...at(-9), ...at(31), GOLD.l);
+  });
 }
 
 export function drawFrame(p) {
   const img = newFrame();
-  const J = solve(S, p);
-  const { pelvis, neck, head, up, side } = J;
-  const flutter = p.cape ?? 0;
+  const J = solve2(S, p);
+  const { pelvis, neck, head, chest, waist } = J;
+  const lower = { side1: [Math.cos(J.a0), Math.sin(J.a0)], up1: [Math.sin(J.a0), -Math.cos(J.a0)] };
+  const holding = !!p.guitar;
 
-  // cloak behind everything
-  part(img, (L) => {
-    const a = J.shB, b = J.shF;
-    const sway = flutter * 6;
-    poly(L, [
-      [a[0] - 2, a[1] - 3], [b[0] - 2, b[1] - 2],
-      [pelvis[0] - 9 - sway, pelvis[1] + 6 + flutter * 2],
-      [pelvis[0] - 16 - sway * 1.4, pelvis[1] + 20],
-      [pelvis[0] - 6 - sway * 0.5, pelvis[1] + 22 + flutter * 2],
-      [pelvis[0] - 1, pelvis[1] + 10],
-    ], lit(CLOAK), CLOAK.ink, 3.4);
+  // the guitar slung on his back: body low behind the hip, neck rising over the shoulder
+  if (!holding) {
+    const base = onTorso(J, waist, -15, 0);
+    guitar(img, base[0], base[1] + 4, -112, 0.95);
+  }
+
+  const sleeve = (back) => ({ ramp: SUIT, to: 0.62, grow: 0.5, cuff: GOLD });
+  const arm = (sh, a, back) => drawArm(img, sh, a, {
+    radii: back ? ARM.map((r) => r * 0.95) : ARM, skin: BONE, sleeve: sleeve(back), hand: 'open',
+  });
+  const leg = (hip, l, back, ang) => drawLeg(img, hip, l, {
+    radii: LEG, skin: PANTS, angle: ang,
+    pants: { ramp: PANTS, to: 1, grow: 0.3, stripe: GOLD.m },
+    boot: { ramp: BOOT, shaft: 8, cuff: GOLD, len: 10.4, r: 4.5 },
   });
 
-  const hand = (a) => (L) => ellipse(L, a.hx, a.hy, 3.6, 3.4, lit(BONE), BONE.ink);
-  const sleeve = (sh, a) => (L) => {
-    limb(L, sh, a, SUIT, 4.2, 3.6, 3.2);
-    capsule(L, a.ex * 0.35 + a.hx * 0.65, a.ey * 0.35 + a.hy * 0.65, a.hx, a.hy, 3.3, 3.3, lit(GOLD), GOLD.ink);
+  const torso = () => {
+    part(img, (L) => {
+      blob(L, [
+        ell(chest, 8.4, 8.6, J.a1),
+        cap(waist, pelvis, 5.6, 6.4),
+        cap([neck[0] - J.up1[0] * 3, neck[1] - J.up1[1] * 3], [head[0], head[1] + 5], 3.6, 3.1),
+        ell(J.shF, 4.4, 4.4), ell(J.shB, 4.1, 4.1),
+      ], cel(SUIT), SUIT.ink);
+      // gold embroidery down the front edge and a line of buttons
+      const at = (u, v) => onTorso(J, chest, u, v).map(Math.round);
+      for (let v = 5; v >= -7; v -= 3) { const [x, y] = at(5.4, v); L.set(x, y, GOLD.m); L.set(x + 1, y, GOLD.l); L.set(x, y + 1, GOLD.d); }
+      for (let v = 8; v >= -9; v--) { const [x, y] = at(3.4, v); L.set(x, y, GOLD.s); }
+      for (let u = -8; u <= 8; u++) { const [x, y] = at(u, -8.6); L.set(x, y, GOLD.m); } // hem trim
+      const sf = J.shF.map(Math.round), sb = J.shB.map(Math.round); // shoulder braid
+      for (const [x, y] of [sf, sb]) { L.set(x - 2, y - 2, GOLD.l); L.set(x - 1, y - 3, GOLD.m); L.set(x, y - 3, GOLD.m); L.set(x + 1, y - 2, GOLD.m); }
+    });
+    // violet cummerbund over the waist and trousers over the hips
+    part(img, (L) => blob(L, [ell([pelvis[0], pelvis[1] + 3], 8.4, 7.6), cap([pelvis[0] - 5, pelvis[1] + 5], [pelvis[0] + 5, pelvis[1] + 5], 6.4)], cel(PANTS), PANTS.ink));
+    part(img, (L) => {
+      const a = onTorso(lower, pelvis, -8.4, 4.4), b = onTorso(lower, pelvis, 8.6, 4.4);
+      blob(L, [cap(a, b, 3, 3.2)], cel(SASH), SASH.ink);
+      const bk = onTorso(lower, pelvis, 4, 4.4);
+      blob(L, [ell(bk, 3.4, 3.4)], cel(GOLD), GOLD.ink);
+    });
+    // red bow tie at the throat
+    part(img, (L) => {
+      const b = onTorso(J, neck, 3.2, -1.2);
+      blob(L, [ell([b[0] - 2.2, b[1]], 2.6, 2), ell([b[0] + 2.2, b[1]], 2.6, 2)], cel(BOW), BOW.ink);
+      blob(L, [ell(b, 1.2, 1.2)], cel(BOW), BOW.ink);
+    });
+    // guitar strap across the chest when the guitar is on his back
+    if (!holding) {
+      part(img, (L) => {
+        const a = onTorso(J, neck, -6, -3), b = onTorso(J, waist, 6.4, 3);
+        line(L, a[0], a[1], b[0], b[1], SASH.m);
+        line(L, a[0] + 1, a[1], b[0] + 1, b[1], SASH.l);
+      });
+    }
   };
-  const boot = (f) => (L) => {
-    ellipse(L, f.hx + 3, f.hy + 0.4, 7.2, 3.2, lit(BOOT), BOOT.ink);
-    capsule(L, f.hx - 1, f.hy - 5, f.hx, f.hy, 3.6, 3.8, lit(BOOT), BOOT.ink);
+
+  const skull = () => drawSkull(img, head, p.face, { bone: BONE, glow: GLOW });
+
+  const hat = () => {
+    const [hx, hy] = head;
+    part(img, (L) => {
+      // brim tilted a little forward, sitting on the brow so the eyes stay clear, then the crown with a gold band
+      blob(L, [ell([hx + 0.4, hy - 9.4], 14.6, 3.2, -0.1)], cel(HAT, { noHi: true }), HAT.ink);
+      paintOver(L, [[hx - 13, hy - 9], [hx + 14, hy - 11.2], [hx + 14, hy - 10.2], [hx - 13, hy - 8]], HAT.l);
+      blob(L, [ell([hx - 0.4, hy - 13.6], 7.4, 5.6)], cel(HAT, { noHi: true }), HAT.ink);
+      paintOver(L, [[hx - 8, hy - 14], [hx + 8, hy - 14.6], [hx + 8, hy - 11.4], [hx - 8, hy - 10.8]], GOLD.m);
+      for (let i = -6; i <= 6; i += 2) L.set(Math.round(hx + i), Math.round(hy - 12.4), GOLD.l);
+      blob(L, [ell([hx + 4.4, hy - 12.6], 2.1, 2.1)], cel(BOW), BOW.ink);
+      for (let i = -12; i <= 14; i += 2) L.set(Math.round(hx + 0.4 + i), Math.round(hy - 7 - (i + 12) * 0.06), GOLD.m);
+    });
   };
 
-  // back arm and guitar neck/behind
-  part(img, sleeve(J.shB, J.armB)); part(img, hand(J.armB));
-  part(img, (L) => limb(L, J.hipB, J.legB, SUIT, 5, 4.2, 3.4)); part(img, boot(J.legB));
-
-  // torso: jacket, sash, bow tie
-  part(img, (L) => {
-    capsule(L, pelvis[0], pelvis[1], J.chest[0], J.chest[1], 6.4, 7.8, lit(SUIT, { dither: true }), SUIT.ink);
-    capsule(L, J.chest[0], J.chest[1], neck[0], neck[1], 7.8, 6, lit(SUIT, { dither: true }), SUIT.ink);
-    // gold lapel line and buttons
-    const o = 3.2;
-    for (let t = 0.14; t < 0.96; t += 0.08) {
-      const x = pelvis[0] + (neck[0] - pelvis[0]) * t + side[0] * o, y = pelvis[1] + (neck[1] - pelvis[1]) * t + side[1] * o;
-      L.set(Math.round(x), Math.round(y), C(GOLD.m));
-      if (((t * 100) | 0) % 16 < 8) L.set(Math.round(x + 1), Math.round(y), C(GOLD.s));
+  const backOver = J.armB.hx > pelvis[0] + 3;
+  if (!backOver) arm(J.shB, J.armB, true);
+  leg(J.hipB, J.legB, true, p.ftB);
+  torso();
+  leg(J.hipF, J.legF, false, p.ftF);
+  skull();
+  hat();
+  if (holding) {
+    const B = [J.armB.hx, J.armB.hy], F = [J.armF.hx, J.armF.hy];
+    const dx = F[0] - B[0], dy = F[1] - B[1], d = Math.hypot(dx, dy) || 1;
+    const u = [dx / d, dy / d];
+    if (p.guitar === 'club') {
+      // gripped by the neck, the body swings out in front like a mallet
+      const c = [F[0] + u[0] * 2, F[1] + u[1] * 2];
+      guitar(img, c[0], c[1], (Math.atan2(-u[1], -u[0]) * 180) / Math.PI, 1);
+    } else {
+      guitar(img, B[0], B[1], p.gAng ?? (Math.atan2(dy, dx) * 180) / Math.PI, 1);
     }
-    // gold epaulette and embroidered chest
-    ellipse(L, J.shF[0], J.shF[1] + 0.5, 3.6, 3, lit(GOLD), GOLD.ink);
-    for (let t = 0.2; t < 0.9; t += 0.14) {
-      const x = pelvis[0] + (neck[0] - pelvis[0]) * t - side[0] * 1.5, y = pelvis[1] + (neck[1] - pelvis[1]) * t - side[1] * 1.5;
-      L.set(Math.round(x), Math.round(y), C(GOLD.s)); L.set(Math.round(x) + 1, Math.round(y) + 1, C(GOLD.s));
-    }
-    // sash belt with buckle
-    const b0 = [pelvis[0] - side[0] * 7, pelvis[1] - side[1] * 7], b1 = [pelvis[0] + side[0] * 7, pelvis[1] + side[1] * 7];
-    capsule(L, b0[0], b0[1], b1[0], b1[1], 2.6, 2.6, lit(CLOAK), CLOAK.ink);
-    ellipse(L, pelvis[0] + side[0] * 3.2, pelvis[1] + side[1] * 3.2, 2.8, 2.8, lit(GOLD), GOLD.ink);
-    // bow tie
-    const bt = [neck[0] + side[0] * 3 - up[0] * 1.5, neck[1] + side[1] * 3 - up[1] * 1.5];
-    ellipse(L, bt[0] - 1.8, bt[1], 2.4, 2, lit(TIE), TIE.ink);
-    ellipse(L, bt[0] + 1.8, bt[1], 2.4, 2, lit(TIE), TIE.ink);
-  });
-
-  // head: skull, hair, sockets, teeth, sombrero
-  part(img, (L) => {
-    ellipse(L, head[0], head[1], 9.6, 10.2, lit(BONE, { dither: true }), BONE.ink);
-    // cheekbone
-    ellipse(L, head[0] + 4, head[1] + 3.6, 3.2, 2, () => C(BONE.l));
-    // hair slicked back under the brim
-    poly(L, [[head[0] - 9, head[1] - 4], [head[0] - 3, head[1] - 10], [head[0] + 7, head[1] - 8], [head[0] + 2, head[1] - 4], [head[0] - 5, head[1] + 1], [head[0] - 9, head[1] + 3]], lit(HAIR), HAIR.ink, 2.4);
-    // cheek, jaw and teeth
-    const open = p.face === 'yell' || p.face === 'hurt' || p.face === 'ko';
-    const jy = head[1] + (open ? 8.4 : 6.6);
-    ellipse(L, head[0] + 2.5, jy, 5.6, 3.2, lit(BONE), BONE.ink);
-    if (open) ellipse(L, head[0] + 3, jy - 2.4, 4.2, 1.8, () => C('#1a0814'));
-    for (let tx = -2; tx <= 7; tx += 2) {
-      L.set(Math.round(head[0] + tx), Math.round(jy - 1 + (open ? -2 : 0)), C(PAL.g));
-      L.set(Math.round(head[0] + tx), Math.round(jy + (open ? -2 : 0)), C(PAL.g));
-    }
-    const eye = (rows, dx, dy, ax, ay) => stamp(L, rows, PAL, head[0] + dx, head[1] + dy, { ax, ay });
-    const brow = (x0, y0, x1, y1) => line(L, head[0] + x0, head[1] + y0, head[0] + x1, head[1] + y1, C(BONE.d));
-    switch (p.face) {
-      case 'yell': eye(SOCK_WIDE, -4, 0, 3, 3); eye(SOCK_WIDE, 5, 0, 3, 3); brow(-8, -4, -1, -2); brow(2, -2, 9, -4); break;
-      case 'hurt': eye(SOCK_HURT_L, -2, 0, 2, 2); eye(SOCK_HURT_R, 6, 0, 2, 2); break;
-      case 'ko': eye(SOCK_X, -2, 0, 2, 2); eye(SOCK_X, 6, 0, 2, 2); break;
-      case 'smug': eye(SOCK_HAPPY, -2, 0, 3, 1); eye(SOCK_HAPPY, 6, 0, 3, 1); break;
-      case 'blink': eye(SOCK_SHUT, -3, 1, 2, 0); eye(SOCK_SHUT, 5, 1, 2, 0); break;
-      default: eye(SOCK, -4, 0, 3, 3); eye(SOCK, 5, 0, 3, 3); brow(-8, -4, -1, -2); brow(2, -2, 9, -4);
-    }
-    stamp(L, NOSE, PAL, head[0] + 9, head[1] + 4, { ax: 1, ay: 1 });
-    // shadow cast by the brim
-    for (let dx = -9; dx <= 9; dx++) { L.set(Math.round(head[0] + dx), Math.round(head[1] - 6), C(BONE.s)); if (Math.abs(dx) < 8) L.set(Math.round(head[0] + dx), Math.round(head[1] - 5), C(BONE.m)); }
-  });
-  if (!p.hatOff) part(img, (L) => sombrero(L, [head[0] - 1 + (p.hat?.[0] ?? 0), head[1] - 11 + (p.hat?.[1] ?? 0)], false));
-
-  part(img, (L) => { limb(L, J.hipF, J.legF, SUIT, 5.4, 4.4, 3.6); stripe(L, J.hipF, J.legF); }); part(img, boot(J.legF));
-  if (p.guitar) part(img, (L) => guitar(L, p.guitar));
-  part(img, sleeve(J.shF, J.armF)); part(img, hand(J.armF));
-  if (p.hatOff) part(img, (L) => sombrero(L, [ANCHOR_X + p.hatOff[0], ANCHOR_Y + p.hatOff[1]], true));
+  }
+  if (backOver) arm(J.shB, J.armB, true);
+  arm(J.shF, J.armF, false);
   return img;
 }
 
 // ------------------------------------------------------------------ poses
-const st = stock(S, { stance: 9, stride: 13, blink: true });
+const st = stock2(S, { lieLift: 10, stance: 14, crouch: 4, stride: 12, lean: 6, blink: true, guard: [[24, -55], [14, -60]] });
 const P = st.P;
 
-/** Guitar held with its body at (x, y) pointing along `ang`; both hands are placed on it. */
-function hold(x, y, ang, open = false) {
-  const a = deg(ang), d = [Math.cos(a), Math.sin(a)], n = [-d[1], d[0]];
-  return {
-    guitar: { x, y, ang },
-    handF: [x + d[0] * 19 + n[0] * 1, y + d[1] * 19 + n[1] * 1],
-    handB: [x - d[0] * 2 + n[0] * 4, y - d[1] * 2 + n[1] * 4],
-  };
-}
-const chestY = -(S.hipH + S.torso * 0.5);
-
-/** Bust shot for the select and dialogue screens: a 64x64 window onto the idle pose. */
-export const portrait = { box: [34, 10], pose: (face) => pose(P({ face }), { guitar: null }) };
+export const portrait = { box: [58, 20], pose: (face) => P({ face, handF: [16, -40], handB: [8, -42] }) };
 
 export function animations() {
-  const idle = st.idle.map((q, i) => pose(q, { ...hold(5, chestY + 6 + [0, 0.6, 1.2, 0.5][i], -34), cape: 0.2 + 0.1 * i }));
-  const walk = st.walk.map((q, i) => pose(q, { ...hold(5, chestY + 5 + Math.abs(Math.sin((i / 6) * Math.PI)) * 1.2, -32), cape: 0.5 + 0.3 * Math.sin((i / 6) * Math.PI * 2) }));
-  const jump = st.jump.map((q, i) => pose(q, { ...hold(5, chestY + 6 - [2, 4, 0][i], [-48, -60, -20][i]), cape: 0.9 }));
-  const land = st.land.map((q) => pose(q, { ...hold(4, chestY + 10, -20), cape: 0.1 }));
-
+  const idle = st.idle, walk = st.walk, jump = st.jump;
   const light = [
-    P({ root: [-2, 2], lean: -3, ...hold(-2, chestY + 5, -22), cape: 0.3 }),
-    P({ root: [5, 2], lean: 10, ...hold(16, chestY + 3, -4), footF: [13, 0], footB: [-10, 0], face: 'yell', cape: 0.5 }),
-    P({ root: [6, 2], lean: 11, ...hold(18, chestY + 3, -4), footF: [14, 0], footB: [-10, 0], face: 'yell', cape: 0.5 }),
-    P({ root: [1, 2], lean: 4, ...hold(7, chestY + 5, -26), cape: 0.3 }),
+    P({ root: [-2, 4], lean: 3, twist: -2, handF: [15, -55], handB: [18, -60] }),
+    P({ root: [3, 4], lean: 9, twist: 3, handF: [34, -60], handB: [16, -62] }),
+    P({ root: [7, 4], lean: 13, twist: 6, handF: [54, -63], handB: [14, -60], face: 'yell', footF: [18, 0] }),
+    P({ root: [8, 4], lean: 14, twist: 7, handF: [55, -63], handB: [13, -60], face: 'yell', footF: [18, 0] }),
+    P({ root: [3, 4], lean: 8, twist: 2, handF: [30, -58], handB: [15, -60] }),
   ];
+  // guitarrazo: unsling it over the head, then swing it down through the opponent
   const heavy = [
-    P({ root: [-4, 3], lean: -8, ...hold(-8, chestY - 6, -118), footF: [10, 0], footB: [-11, 0], cape: 0.6 }),
-    P({ root: [-6, 3], lean: -14, ...hold(-10, chestY - 12, -132), footF: [11, 0], footB: [-12, 0], cape: 0.9 }),
-    P({ root: [8, 3], lean: 20, ...hold(14, chestY + 6, 16), face: 'yell', footF: [16, 0], footB: [-12, 0], cape: 1 }),
-    P({ root: [9, 3], lean: 22, ...hold(16, chestY + 10, 34), face: 'yell', footF: [17, 0], footB: [-12, 0], cape: 1 }),
-    P({ root: [4, 3], lean: 10, ...hold(10, chestY + 8, 20), footF: [13, 0], footB: [-10, 0], cape: 0.5 }),
+    P({ root: [-4, 7], lean: -2, handF: [10, -64], handB: [2, -60], guitar: 'club', gAng: -60, footF: [16, 0], footB: [-18, 0] }),
+    P({ root: [-6, 4], lean: -12, bend: -4, handF: [-2, -104], handB: [-6, -96], guitar: 'club', gAng: -112, face: 'yell', footF: [15, 0], footB: [-19, 0] }),
+    P({ root: [8, 8], lean: 22, bend: 3, twist: 5, handF: [58, -48], handB: [38, -66], guitar: 'club', face: 'yell', footF: [24, 0], footB: [-17, 0] }),
+    P({ root: [9, 8], lean: 24, bend: 3, twist: 5, handF: [60, -42], handB: [40, -62], guitar: 'club', face: 'yell', footF: [25, 0], footB: [-17, 0] }),
+    P({ root: [4, 6], lean: 14, handF: [48, -44], handB: [30, -58], guitar: 'club', footF: [21, 0], footB: [-16, 0] }),
+    P({ root: [1, 5], lean: 8, handF: [26, -54], handB: [16, -60] }),
   ];
+  // jump kick
   const air = [
-    P({ root: [0, -9], lean: 4, ...hold(0, chestY - 6, -80), footF: [10, -12], footB: [-3, -15], cape: 1 }),
-    P({ root: [4, -8], lean: 16, ...hold(12, chestY + 2, 40), footF: [14, -10], footB: [-2, -13], face: 'yell', cape: 1 }),
-    P({ root: [4, -8], lean: 18, ...hold(14, chestY + 5, 56), footF: [15, -9], footB: [-1, -12], face: 'yell', cape: 1 }),
+    P({ root: [0, -12], lean: 6, handF: [22, -62], handB: [12, -64], footF: [14, -22], footB: [-8, -18], face: 'yell' }),
+    P({ root: [2, -8], lean: -14, bend: -4, handF: [6, -68], handB: [-8, -62], footF: [42, -30], footB: [-10, -22], face: 'yell', ftF: -30 }),
+    P({ root: [3, -8], lean: -16, bend: -4, handF: [5, -68], handB: [-9, -62], footF: [44, -30], footB: [-11, -22], face: 'yell', ftF: -30 }),
   ];
-  // Serenata: strum up front, head thrown back to sing
+  // Serenata: unsling the guitar and strum a skull out of it
   const special = [
-    P({ root: [-2, 2], lean: -6, ...hold(-4, chestY + 4, -40), cape: 0.4 }),
-    P({ root: [-3, 2], lean: -12, head: [-2, 0], ...hold(2, chestY + 2, -70), face: 'yell', cape: 0.8 }),
-    P({ root: [1, 2], lean: -8, head: [-2, -1], ...hold(8, chestY + 1, -56), face: 'yell', handF: [18, chestY - 4], cape: 0.8 }),
-    P({ root: [1, 2], lean: -8, head: [-2, -1], ...hold(8, chestY + 1, -56), face: 'yell', handF: [18, chestY + 4], cape: 0.8 }),
-    P({ root: [0, 2], lean: 0, ...hold(5, chestY + 5, -38), cape: 0.4 }),
+    P({ root: [-4, 6], lean: 0, handF: [14, -58], handB: [-2, -56], guitar: 'strum', gAng: -20, footF: [16, 0], footB: [-18, 0] }),
+    P({ root: [-1, 5], lean: 4, handF: [34, -54], handB: [10, -52], guitar: 'strum', face: 'smug', footF: [17, 0], footB: [-18, 0] }),
+    P({ root: [4, 5], lean: 8, handF: [44, -56], handB: [14, -48], guitar: 'strum', face: 'yell', footF: [19, 0], footB: [-17, 0] }),
+    P({ root: [5, 5], lean: 9, handF: [46, -58], handB: [14, -46], guitar: 'strum', face: 'yell', footF: [19, 0], footB: [-17, 0] }),
+    P({ root: [1, 5], lean: 5, handF: [22, -56], handB: [10, -52], guitar: 'strum', footF: [17, 0], footB: [-17, 0] }),
   ];
   const sup = [
-    P({ root: [0, 6], lean: 4, ...hold(4, chestY + 14, -30), face: 'yell', cape: 0.3 }),
-    P({ root: [0, 0], lean: -4, ...hold(4, chestY - 8, -70), face: 'yell', cape: 0.7 }),
-    P({ root: [0, -1], lean: -8, head: [-2, -1], ...hold(2, chestY - 22, -96), face: 'yell', cape: 1 }),
-    P({ root: [0, -1], lean: -10, head: [-3, -1], ...hold(0, chestY - 26, -104), face: 'yell', cape: 1 }),
-    P({ root: [6, 3], lean: 18, ...hold(14, chestY - 4, -8), face: 'yell', footF: [14, 0], footB: [-12, 0], cape: 1 }),
-    P({ root: [4, 3], lean: 10, ...hold(8, chestY + 6, -26), face: 'yell', cape: 0.6 }),
+    P({ root: [-1, 8], lean: 4, handF: [12, -48], handB: [4, -46], guitar: 'club', gAng: -10, face: 'yell', footF: [18, 0], footB: [-19, 0] }),
+    P({ root: [0, 4], lean: 0, handF: [18, -76], handB: [6, -66], guitar: 'club', gAng: -50, face: 'yell', footF: [17, 0], footB: [-18, 0] }),
+    P({ root: [0, 0], lean: -6, bend: -4, handF: [10, -104], handB: [-2, -96], guitar: 'club', gAng: -86, face: 'yell', footF: [16, 0], footB: [-18, 0] }),
+    P({ root: [0, 0], lean: -12, bend: -6, handF: [6, -108], handB: [-6, -98], guitar: 'club', gAng: -96, face: 'yell', footF: [16, 0], footB: [-19, 0] }),
+    P({ root: [10, 9], lean: 24, bend: 4, twist: 6, handF: [64, -40], handB: [42, -58], guitar: 'club', face: 'yell', footF: [27, 0], footB: [-17, 0] }),
+    P({ root: [11, 9], lean: 26, bend: 4, twist: 6, handF: [66, -36], handB: [44, -54], guitar: 'club', face: 'yell', footF: [28, 0], footB: [-17, 0] }),
+    P({ root: [5, 7], lean: 14, handF: [46, -44], handB: [30, -56], guitar: 'club', footF: [22, 0], footB: [-16, 0] }),
   ];
-
-  const hit = st.hit.map((q, i) => pose(q, { ...hold(-3 - i * 2, chestY + 8, [-10, 10, -20][i]), cape: 0.8 }));
-  const koq = st.ko.map((q, i) => pose(q, {
-    hatOff: [[24, -48], [-34, -6], [-44, -2], [-44, -2], [-44, -2]][i].slice(0, 2),
-    cape: 0.5,
-    guitar: [
-      { x: 18, y: -34, ang: -80 }, { x: 24, y: -14, ang: -30 }, { x: 30, y: -6, ang: -4 }, { x: 32, y: -5, ang: 0 }, { x: 32, y: -5, ang: 0 },
-    ][i],
-    handF: [[8, -50], [14, -34], [-26, -6], [-26, -6], [-26, -6]][i],
-  }));
-  koq[0].hatOff = [-8, -62];
-  const getup = st.getup.map((q, i) => pose(q, { cape: 0.4, hatOff: i < 2 ? [-40, -2] : null, guitar: i < 2 ? { x: 26, y: -5, ang: 0 } : { x: 6, y: chestY + 14, ang: -30 }, ...(i === 2 ? hold(6, chestY + 12, -30) : {}) }));
-  const dodge = st.dodge.map((q) => pose(q, { ...hold(6, chestY + 14, -20), cape: 1 }));
-  const block = st.guard.map((q, i) => pose(q, { ...hold(8, chestY + 6, -88 - i * 2), cape: 0.2, handF: [10, chestY - 10], handB: [9, chestY + 2] }));
-  const win = st.win.map((q, i) => pose(q, { ...hold(14, [-72, -94, -90, -86][i], [-40, -66, -62, -58][i]), cape: 0.5 + 0.2 * i }));
-
+  const hit = [
+    P({ root: [-4, 4], lean: -10, bend: -4, head: [-3, 0], handF: [6, -56], handB: [-4, -60], footF: [15, 0], footB: [-19, 0], face: 'hurt' }),
+    P({ root: [-8, 5], lean: -18, bend: -8, head: [-5, 1], handF: [-6, -52], handB: [-16, -56], footF: [14, 0], footB: [-21, 0], face: 'hurt' }),
+    P({ root: [-4, 5], lean: -8, bend: -3, head: [-2, 1], handF: [8, -54], handB: [-2, -58], face: 'hurt' }),
+  ];
   const draw = (a) => a.map(drawFrame);
   return {
-    idle: { fps: 6, loop: true, frames: draw(idle) },
+    idle: { fps: 7, loop: true, frames: draw(idle) },
     walk: { fps: 11, loop: true, frames: draw(walk) },
     jump: { fps: 1, loop: false, frames: draw(jump) },
-    land: { fps: 1, loop: false, frames: draw(land) },
-    light: { fps: 12, loop: false, strike: [1, 2], frames: draw(light) },
+    land: { fps: 1, loop: false, frames: draw(st.land) },
+    light: { fps: 13, loop: false, strike: [2, 3], frames: draw(light) },
     heavy: { fps: 10, loop: false, strike: [2, 3], frames: draw(heavy) },
     air: { fps: 10, loop: false, strike: [1, 2], frames: draw(air) },
     special: { fps: 10, loop: false, strike: [2, 3], frames: draw(special) },
-    super: { fps: 8, loop: false, strike: [3, 4], frames: draw(sup) },
+    super: { fps: 8, loop: false, strike: [4, 5], frames: draw(sup) },
     hit: { fps: 10, loop: false, frames: draw(hit) },
-    ko: { fps: 8, loop: false, frames: draw(koq) },
-    getup: { fps: 8, loop: false, frames: draw(getup) },
-    dodge: { fps: 10, loop: false, frames: draw(dodge) },
-    block: { fps: 4, loop: true, frames: draw(block) },
-    win: { fps: 6, loop: true, frames: draw(win) },
+    ko: { fps: 8, loop: false, frames: draw(st.ko) },
+    getup: { fps: 8, loop: false, frames: draw(st.getup) },
+    dodge: { fps: 10, loop: false, frames: draw(st.dodge) },
+    block: { fps: 4, loop: true, frames: draw(st.guard) },
+    win: { fps: 6, loop: true, frames: draw(st.win) },
   };
 }

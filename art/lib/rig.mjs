@@ -2,10 +2,10 @@
 import { Img } from './raster.mjs';
 
 /** Every fighter frame is drawn on a CELL_W x CELL_H canvas with the feet anchored at (ANCHOR_X, ANCHOR_Y). */
-export const CELL_W = 128;
-export const CELL_H = 112;
-export const ANCHOR_X = 64;
-export const ANCHOR_Y = 100;
+export const CELL_W = 160;
+export const CELL_H = 144;
+export const ANCHOR_X = 80;
+export const ANCHOR_Y = 130;
 
 export function newFrame() {
   return new Img(CELL_W, CELL_H);
