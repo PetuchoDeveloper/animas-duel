@@ -20,10 +20,31 @@ type Result = 'victory' | 'defeat' | null;
 
 const INTROS = ['level1Intro', 'level2Intro', 'level3Intro'] as const;
 
+/**
+ * Pixel art stays crisp only when each art pixel is a whole number of device pixels, so the 480x270
+ * screen snaps down to the nearest whole scale when that costs less than a fifth of the size.
+ * shortcut: it counts CSS pixels, not device pixels, so a fractional devicePixelRatio is not honoured; upgrade if a target needs it.
+ */
+function useScreenSize(): { width: number; height: number } | undefined {
+  const measure = () => {
+    const fit = Math.min(window.innerWidth / 480, window.innerHeight / 270);
+    const whole = Math.floor(fit);
+    return whole >= 1 && whole / fit >= 0.8 ? { width: 480 * whole, height: 270 * whole } : undefined;
+  };
+  const [size, setSize] = useState(measure);
+  useEffect(() => {
+    const onResize = () => setSize(measure());
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return size;
+}
+
 /** Dev only: `?duel=mode:p1:p2:stage` jumps straight into a fight for testing. */
 const quick = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('duel')?.split(':') : undefined;
 
 export default function App() {
+  const screenSize = useScreenSize();
   const [screen, setScreen] = useState<Screen>(quick ? 'battle' : 'splash');
   const [mode, setMode] = useState<GameMode>((quick?.[0] as GameMode) ?? 'story');
   const [p1, setP1] = useState(quick?.[1] ?? 'bean');
@@ -87,7 +108,7 @@ export default function App() {
 
   return (
     <div className="flex h-full w-full items-center justify-center bg-ink">
-      <div className="screen">
+      <div className="screen" style={screenSize}>
         {screen === 'splash' && (
           <SplashScreen
             onFinish={() => {
