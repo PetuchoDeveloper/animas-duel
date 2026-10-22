@@ -402,9 +402,8 @@ export class Sim {
 
   private attackBox(f: Fighter, m: Move): Hitbox {
     const { x0, y0, y1 } = m.box;
-    const reach = f.move === 'light' || f.move === 'heavy' || f.move === 'air'
-      ? CHARACTER_COMBAT[f.charId].reach : 1;
-    const x1 = m.box.x1 * reach;
+    const x1 = f.move === 'light' || f.move === 'heavy' || f.move === 'air'
+      ? CHARACTER_COMBAT[f.charId].reach[f.move] : m.box.x1;
     return { x: f.x + (f.facing === 1 ? x0 : -x1), y: f.y - y1,
       width: x1 - x0, height: y1 - y0 };
   }
@@ -419,7 +418,7 @@ export class Sim {
       const p = m.projectile;
       const kind = CHARACTER_COMBAT[f.charId].special;
       this.shots.push({
-        id: this.nextProjectileId++, owner: f.slot, kind, x: f.x + f.facing * 23,
+        id: this.nextProjectileId++, owner: f.slot, kind, x: f.x + f.facing * p.x,
         y: f.y - p.height, vx: f.facing * p.speed, facing: f.facing,
         life: p.life, w: p.w, h: p.h, move: m, generation: f.generation,
       });

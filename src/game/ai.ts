@@ -70,7 +70,7 @@ export function createAI(opts: { slot: Slot; difficulty: 0 | 1 | 2; rng: () => n
       return choose('dodge');
     }
     const roll = rng();
-    const pokeRange = 28 * profile.reach + CHARACTER_COMBAT[other.charId].hurtbox.w / 2;
+    const pokeRange = 0.8 * profile.reach.light + CHARACTER_COMBAT[other.charId].hurtbox.w / 2;
     if (distance < pokeRange) {
       if (roll < [0.68, 0.48, 0.38][difficulty]) return choose('light');
       if (roll < 0.8) return choose('heavy');

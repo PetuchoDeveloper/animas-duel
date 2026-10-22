@@ -4,6 +4,7 @@
  */
 
 import { ATLAS, type AnimMeta, type Assets } from './assets';
+import { CHARACTER_COMBAT } from './moves';
 import { ROSTER, SOMBREROS, SUPER_NAMES } from './roster';
 import type { FighterState, GameMode, Sim, SimEvent, SimFighter, Slot } from './sim';
 
@@ -346,7 +347,7 @@ export class Renderer {
   private drawShadow(f: SimFighter): void {
     const { ctx } = this;
     const lift = Math.min(1, -f.y / 90);
-    const rx = Math.round(15 - lift * 7);
+    const rx = Math.round(CHARACTER_COMBAT[f.charId].pushboxHalfWidth + 9 - lift * 8);
     const x = Math.round(f.x), y = GROUND + 2;
     ctx.fillStyle = 'rgba(5, 2, 12, 0.5)';
     for (let r = -2; r <= 2; r++) {
@@ -455,8 +456,10 @@ export class Renderer {
     const row = `${heavy ? 'slashHeavy' : 'slashLight'}_${f.charId}`;
     const meta = ATLAS.fx.rows[row];
     const idx = Math.min(meta.frames - 1, Math.floor((f.phaseTick / Math.max(1, f.phaseLen)) * meta.frames));
-    const reach = heavy ? 28 : 22;
-    this.blitFx(row, idx, f.x + f.facing * reach, GROUND + f.y - (f.state === 'air' ? 26 : heavy ? 40 : 36), f.facing === -1);
+    // the arc's far edge (its radius) lands on the visible tip of the attack
+    const { reach, hurtbox } = CHARACTER_COMBAT[f.charId];
+    const tip = reach[f.state], radius = heavy ? 44 : 34;
+    this.blitFx(row, idx, f.x + f.facing * (tip - radius + 4), GROUND + f.y - hurtbox.h * (f.state === 'air' ? 0.5 : heavy ? 0.62 : 0.66), f.facing === -1);
   }
 
   private drawProjectile(p: { kind: string; x: number; y: number; facing: 1 | -1; life: number }): void {

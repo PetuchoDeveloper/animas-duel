@@ -19,7 +19,8 @@ export interface Move {
   meterGain: number;
   box: { x0: number; x1: number; y0: number; y1: number };
   dashSpeed?: number;
-  projectile?: { speed: number; w: number; h: number; height: number; life: number };
+  /** `x` is where it leaves the body, measured from the fighter's centre: the hand or the weapon tip. */
+  projectile?: { speed: number; w: number; h: number; height: number; life: number; x: number };
 }
 
 export interface CombatProfile {
@@ -34,12 +35,13 @@ export interface CombatProfile {
   dashMult: number;
   hurtbox: { w: number; h: number };
   pushboxHalfWidth: number;
-  reach: number;
+  /** How far each normal visibly travels from the body centre, in px: where the fist, foot or weapon ends in the art. */
+  reach: Record<'light' | 'heavy' | 'air', number>;
   special: SpecialKind;
 }
 
 function profile(power: number, speed: number, defense: number, w: number, h: number,
-  pushboxHalfWidth: number, reach: number, special: SpecialKind): CombatProfile {
+  pushboxHalfWidth: number, reach: [number, number, number], special: SpecialKind): CombatProfile {
   return {
     power, speed, defense,
     powerMult: 1 + (power - 3) * 0.06,
@@ -48,16 +50,18 @@ function profile(power: number, speed: number, defense: number, w: number, h: nu
     jumpSpeed: -6 * (0.96 + speed * 0.02),
     airSpeed: 1.2 + speed * 0.16,
     dashMult: 0.88 + speed * 0.04,
-    hurtbox: { w, h }, pushboxHalfWidth, reach, special,
+    hurtbox: { w, h }, pushboxHalfWidth, reach: { light: reach[0], heavy: reach[1], air: reach[2] }, special,
   };
 }
 
+// Sizes and reach follow the sprites (measure them with `node art/measure.mjs`): a hurtbox is the body without
+// ears, sprout or hat tip, and a normal's reach is its visible tip minus a few px of overlap.
 export const CHARACTER_COMBAT: Record<string, CombatProfile> = {
-  bean: profile(3, 5, 4, 22, 52, 11, 0.85, 'leaf'),
-  flea: profile(5, 4, 4, 26, 62, 12, 1, 'headbutt'),
-  ernesto: profile(4, 3, 3, 28, 76, 13, 1.2, 'skull'),
-  elmacho: profile(5, 2, 5, 34, 82, 15, 1, 'lariat'),
-  huesos: profile(5, 4, 3, 28, 78, 13, 1.3, 'spirit'),
+  bean: profile(3, 5, 4, 26, 58, 12, [42, 44, 39], 'leaf'),
+  flea: profile(5, 4, 4, 28, 58, 13, [46, 53, 38], 'headbutt'),
+  ernesto: profile(4, 3, 3, 26, 88, 12, [56, 69, 53], 'skull'),
+  elmacho: profile(5, 2, 5, 34, 88, 16, [47, 67, 48], 'lariat'),
+  huesos: profile(5, 4, 3, 26, 86, 12, [66, 75, 70], 'spirit'),
 };
 
 export const MOVES: Record<Exclude<MoveId, 'special'>, Move> = {
@@ -87,30 +91,30 @@ export const SPECIAL_MOVES: Record<SpecialKind, Move> = {
   leaf: {
     startup: 12, active: 1, recovery: 22, damage: 9, hitstun: 20, blockstun: 12,
     knockback: 2.5, blockKnockback: 1.6, hitstop: 9, knockdown: true, meterGain: 12,
-    box: { x0: 8, x1: 28, y0: 18, y1: 30 },
-    projectile: { speed: 4.2, w: 14, h: 12, height: 24, life: 120 },
+    box: { x0: 8, x1: 28, y0: 36, y1: 48 },
+    projectile: { speed: 4.2, w: 14, h: 12, height: 42, life: 120, x: 40 },
   },
   skull: {
     startup: 18, active: 1, recovery: 25, damage: 16, hitstun: 24, blockstun: 16,
     knockback: 3.2, blockKnockback: 2, hitstop: 9, knockdown: true, meterGain: 16,
-    box: { x0: 8, x1: 30, y0: 16, y1: 38 },
-    projectile: { speed: 2.4, w: 22, h: 22, height: 27, life: 190 },
+    box: { x0: 8, x1: 30, y0: 42, y1: 64 },
+    projectile: { speed: 2.4, w: 22, h: 22, height: 54, life: 190, x: 52 },
   },
   spirit: {
     startup: 15, active: 1, recovery: 24, damage: 12, hitstun: 22, blockstun: 14,
     knockback: 2.8, blockKnockback: 1.8, hitstop: 9, knockdown: true, meterGain: 14,
-    box: { x0: 8, x1: 30, y0: 2, y1: 18 },
-    projectile: { speed: 3.2, w: 20, h: 16, height: 10, life: 150 },
+    box: { x0: 8, x1: 30, y0: 24, y1: 40 },
+    projectile: { speed: 3.2, w: 20, h: 16, height: 34, life: 150, x: 62 },
   },
   headbutt: {
     startup: 12, active: 20, recovery: 20, damage: 13, hitstun: 23, blockstun: 15,
     knockback: 3.6, blockKnockback: 2.2, hitstop: 9, knockdown: true, meterGain: 15,
-    box: { x0: 0, x1: 32, y0: 5, y1: 52 }, dashSpeed: 6.7,
+    box: { x0: 0, x1: 60, y0: 2, y1: 46 }, dashSpeed: 6.7,
   },
   lariat: {
     startup: 16, active: 28, recovery: 24, damage: 15, hitstun: 25, blockstun: 17,
     knockback: 4, blockKnockback: 2.4, hitstop: 9, knockdown: true, meterGain: 16,
-    box: { x0: -12, x1: 48, y0: 5, y1: 64 }, dashSpeed: 3.5,
+    box: { x0: -28, x1: 58, y0: 24, y1: 88 }, dashSpeed: 3.5,
   },
 };
 
