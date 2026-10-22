@@ -3,11 +3,10 @@
  * Story mode offers the two heroes; versus and practice offer everyone.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { url } from '../game/assets';
 import { gameAudio } from '../game/audio';
-import { SOMBRERO_STAGES } from '../game/combatRules';
-import { BOSSES, HEROES, ROSTER, type Fighter } from '../game/roster';
+import { BOSSES, HEROES, ROSTER, SOMBREROS, type Fighter } from '../game/roster';
 import type { GameMode } from '../game/sim';
 import { ControlsList } from './MatchModal';
 import { Pips, Portrait, Backdrop, u } from './ui';
@@ -34,23 +33,25 @@ export function CharacterSelect({ mode, onSelectComplete, onBack }: CharacterSel
     p2: !versus ? BOSSES[0] : step === 'p2' ? cursorId : picks.p2,
   };
 
-  const confirm = () => {
+  /** `index` is the tile that was activated, which a click or tap can differ from the keyboard cursor. */
+  const confirm = (index = cursor) => {
     gameAudio.playGuitarChord('A_minor');
+    const chosen = step === 'stage' ? cursorId : ids[index];
     if (step === 'p1') {
       if (!versus) {
-        onSelectComplete(cursorId, BOSSES[0], 0);
+        onSelectComplete(chosen, BOSSES[0], 0);
         return;
       }
-      setPicks((p) => ({ ...p, p1: cursorId }));
+      setPicks((p) => ({ ...p, p1: chosen }));
       setCursor(ids.indexOf(picks.p2));
       setStep('p2');
     } else if (step === 'p2') {
-      setPicks((p) => ({ ...p, p2: cursorId }));
+      setPicks((p) => ({ ...p, p2: chosen }));
       setCursor(stage);
       setStep('stage');
     } else {
       gameAudio.playGuitarChord('E_major');
-      onSelectComplete(picks.p1, picks.p2, stage);
+      onSelectComplete(picks.p1, picks.p2, index);
     }
   };
 
@@ -64,15 +65,22 @@ export function CharacterSelect({ mode, onSelectComplete, onBack }: CharacterSel
     } else onBack();
   };
 
+  // Arrow keys (or A/D) move focus along the picker; focus drives the cursor, and Enter or Space
+  // then activate the focused button natively. Esc steps back.
+  const picker = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    picker.current?.querySelectorAll<HTMLButtonElement>('button')[cursor]?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const moves = e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'KeyA' || e.code === 'KeyD';
-      if (e.repeat && !moves) return;
-      const count = step === 'stage' ? SOMBRERO_STAGES.length : ids.length;
-      if (e.code === 'ArrowLeft' || e.code === 'KeyA') setCursor((c) => (c + count - 1) % count);
-      else if (e.code === 'ArrowRight' || e.code === 'KeyD') setCursor((c) => (c + 1) % count);
-      else if (e.code === 'Enter' || e.code === 'Space') confirm();
-      else if (e.code === 'Escape' || e.code === 'Backspace') back();
+      const prev = e.code === 'ArrowLeft' || e.code === 'ArrowUp' || e.code === 'KeyA';
+      const next = e.code === 'ArrowRight' || e.code === 'ArrowDown' || e.code === 'KeyD';
+      if (prev || next) {
+        const list = picker.current?.querySelectorAll<HTMLButtonElement>('button');
+        if (list?.length) list[(cursor + (next ? 1 : -1) + list.length) % list.length].focus();
+      } else if ((e.code === 'Escape' || e.code === 'Backspace') && !e.repeat) back();
       else return;
       e.preventDefault();
     };
@@ -102,17 +110,15 @@ export function CharacterSelect({ mode, onSelectComplete, onBack }: CharacterSel
         <FighterCard id={shown.p1} tag={versus ? '1P' : 'Héroe'} tone="gold" />
         <div className="flex flex-col items-center" style={{ gap: u(6), width: u(170) }}>
           {step !== 'stage' ? (
-            <div className="flex" style={{ gap: u(5) }}>
+            <div ref={picker} className="flex" style={{ gap: u(5) }}>
               {ids.map((id, i) => (
                 <button
                   key={id}
                   type="button"
                   aria-label={ROSTER[id].name}
                   onMouseEnter={() => setCursor(i)}
-                  onClick={() => {
-                    setCursor(i);
-                    confirm();
-                  }}
+                  onFocus={() => setCursor(i)}
+                  onClick={() => confirm(i)}
                   className="relative block"
                   style={{
                     padding: u(2),
@@ -131,16 +137,14 @@ export function CharacterSelect({ mode, onSelectComplete, onBack }: CharacterSel
               ))}
             </div>
           ) : (
-            <div className="flex flex-col" style={{ gap: u(4), width: '100%' }}>
-              {SOMBRERO_STAGES.map((s, i) => (
+            <div ref={picker} className="flex flex-col" style={{ gap: u(4), width: '100%' }}>
+              {SOMBREROS.map((s, i) => (
                 <button
                   key={s.level}
                   type="button"
                   onMouseEnter={() => setCursor(i)}
-                  onClick={() => {
-                    setCursor(i);
-                    confirm();
-                  }}
+                  onFocus={() => setCursor(i)}
+                  onClick={() => confirm(i)}
                   className="flex items-center text-left"
                   style={{
                     gap: u(5),
@@ -160,7 +164,7 @@ export function CharacterSelect({ mode, onSelectComplete, onBack }: CharacterSel
             </div>
           )}
           <p className="b9 text-center text-mist shadow-text" style={{ minHeight: u(24) }}>
-            {step === 'stage' ? SOMBRERO_STAGES[stage].description : <>El mismo teclado para dos: {mode === 'training' ? 'el rival se queda quieto.' : 'cada quien con sus teclas.'}</>}
+            {step === 'stage' ? SOMBREROS[stage].blurb : <>El mismo teclado para dos: {mode === 'training' ? 'el rival se queda quieto.' : 'cada quien con sus teclas.'}</>}
           </p>
         </div>
         <FighterCard id={shown.p2} tag={versus ? '2P' : 'Jefe nivel 1'} tone="rose" />
@@ -168,7 +172,7 @@ export function CharacterSelect({ mode, onSelectComplete, onBack }: CharacterSel
 
       <div className="absolute inset-x-0 flex justify-center" style={{ bottom: u(8) }}>
         {step === 'stage' ? (
-          <button type="button" className="btn btn-rose" onClick={confirm} style={{ width: u(120) }}>
+          <button type="button" className="btn btn-rose" onClick={() => confirm()} style={{ width: u(120) }}>
             ¡A pelear! <span className="keycap">Enter</span>
           </button>
         ) : (

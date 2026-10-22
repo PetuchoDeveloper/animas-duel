@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { loadAssets } from '../game/assets';
 import { FightEngine } from '../game/engine';
 import type { GameMode, Slot } from '../game/sim';
+import { TouchControls, hasTouch } from './TouchControls';
 import { u } from './ui';
 
 interface FightCanvasProps {
@@ -51,6 +52,7 @@ export function FightCanvas({ p1, p2, stage, mode, paused, onMatchOver }: FightC
   return (
     <div className="layer bg-ink select-none">
       <canvas ref={canvas} data-testid="fight-canvas" className="block h-full w-full" />
+      {hasTouch() && !paused && <TouchControls onPress={(key, down) => engine.current?.setTouch(key, down)} />}
       {error && <p className="font-pixel t8 absolute inset-0 flex items-center justify-center text-rose" style={{ padding: u(20) }}>{error}</p>}
     </div>
   );

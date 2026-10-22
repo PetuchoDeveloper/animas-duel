@@ -55,7 +55,13 @@ export function TitleScreen({ onStartGame, onOpenLore, isMuted, onToggleMute }: 
         </h1>
       </div>
 
-      <div ref={menu} className="absolute grid" style={{ top: u(152), left: '50%', transform: 'translateX(-50%)', gridTemplateColumns: `${u(120)} ${u(120)}`, gap: u(3) }}>
+      <div
+        ref={menu}
+        onKeyDown={(e) => {
+          // a held Enter or Space would otherwise fire the focused button again and again
+          if (e.repeat && (e.code === 'Enter' || e.code === 'Space')) e.preventDefault();
+        }}
+        className="absolute grid" style={{ top: u(152), left: '50%', transform: 'translateX(-50%)', gridTemplateColumns: `${u(120)} ${u(120)}`, gap: u(3) }}>
         {ENTRIES.map((e) => (
           <button key={e.label} type="button" className="btn flex-col" style={{ gap: u(2) }} onClick={() => choose(e.mode)}>
             <span>{e.label}</span>

@@ -32,7 +32,7 @@ export function DialogueScene({ dialogues, stage, title, onComplete }: DialogueS
     const start = performance.now();
     timer.current = window.setInterval(() => {
       const n = Math.floor(((performance.now() - start) / 1000) * CHARS_PER_SECOND);
-      setShown(n);
+      setShown((shownSoFar) => Math.max(shownSoFar, n)); // never undo a line the player already completed
       if (n >= line.spanishText.length) clearInterval(timer.current);
     }, 30);
     return () => clearInterval(timer.current);
@@ -78,22 +78,24 @@ export function DialogueScene({ dialogues, stage, title, onComplete }: DialogueS
         </button>
       </div>
 
-      <div className="absolute flex items-end" style={{ left: u(12), right: u(12), bottom: u(60), justifyContent: heroSide ? 'flex-start' : 'flex-end' }}>
-        <div className="rise" key={index}>
-          <Portrait id={line.speakerId} mood={line.mood} scale={2} flip={!heroSide} />
+      <div className="absolute flex flex-col" style={{ left: u(12), right: u(12), bottom: u(10), gap: u(2) }}>
+        <div className="flex" style={{ justifyContent: heroSide ? 'flex-start' : 'flex-end', marginBottom: u(-4) }}>
+          <div className="rise" key={index}>
+            <Portrait id={line.speakerId} mood={line.mood} scale={2} flip={!heroSide} />
+          </div>
         </div>
-      </div>
 
-      <div className="panel absolute" style={{ left: u(12), right: u(12), bottom: u(10), height: u(46), padding: u(7) }}>
-        <span className="font-pixel t6 absolute text-ink" style={{ top: u(-6), [heroSide ? 'left' : 'right']: u(8), background: heroSide ? 'var(--color-gold)' : 'var(--color-rose)', padding: `${u(1)} ${u(4)}` }}>
-          {speaker.name}
-        </span>
-        <p className="b13 text-bone" style={{ minHeight: u(20) }}>
-          {line.spanishText.slice(0, shown)}
-          <span className="blink" aria-hidden>{done ? '' : '_'}</span>
-        </p>
-        <p className="b9 text-mist" style={{ marginTop: u(3), opacity: done ? 1 : 0 }}>{line.englishSub}</p>
-        <span className="blink font-pixel t6 absolute text-gold-hi" style={{ right: u(8), bottom: u(5) }}>{done ? 'Enter >' : ''}</span>
+        <div className="panel" style={{ minHeight: u(52), padding: u(7), paddingBottom: u(11) }}>
+          <span className="font-pixel t6 absolute text-ink" style={{ top: u(-6), [heroSide ? 'left' : 'right']: u(8), background: heroSide ? 'var(--color-gold)' : 'var(--color-rose)', padding: `${u(1)} ${u(4)}` }}>
+            {speaker.name}
+          </span>
+          <p className="b13 text-bone" style={{ minHeight: u(20) }}>
+            {line.spanishText.slice(0, shown)}
+            <span className="blink" aria-hidden>{done ? '' : '_'}</span>
+          </p>
+          <p className="b9 text-mist" style={{ marginTop: u(3), opacity: done ? 1 : 0 }}>{line.englishSub}</p>
+          <span className="blink font-pixel t6 absolute text-gold-hi" style={{ right: u(8), bottom: u(4) }}>{done ? 'Enter >' : ''}</span>
+        </div>
       </div>
     </div>
   );

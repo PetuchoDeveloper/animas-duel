@@ -48,6 +48,9 @@ body {
   line-height: 1.35;
   -webkit-font-smoothing: none;
   font-smooth: never;
+  /* the pixel fonts draw broken fi/fl ligatures */
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "clig" 0;
   overflow: hidden;
 }
 

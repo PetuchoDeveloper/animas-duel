@@ -106,6 +106,10 @@ export function loadAssets(): Promise<Assets> {
       flash: Object.fromEntries(ids.map((id, i) => [id, silhouette(fighterImgs[i])])),
     };
   })();
+  // a failed load must not poison every later attempt
+  cached.catch(() => {
+    cached = null;
+  });
   return cached;
 }
 

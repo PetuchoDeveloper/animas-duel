@@ -4,8 +4,7 @@
 
 import { useRef } from 'react';
 import { gameAudio } from '../game/audio';
-import { SOMBRERO_STAGES } from '../game/combatRules';
-import { ROSTER } from '../game/roster';
+import { ROSTER, SOMBREROS } from '../game/roster';
 import type { GameMode } from '../game/sim';
 import { Portrait, useArrowFocus, useKey, u } from './ui';
 
@@ -61,8 +60,8 @@ export function MatchModal({ type, mode, stageIdx, p1, p2, onResume, onRestart, 
   const box = useRef<HTMLDivElement>(null);
   useArrowFocus(box);
   const story = mode === 'story';
-  const last = stageIdx >= SOMBRERO_STAGES.length - 1;
-  const stage = SOMBRERO_STAGES[stageIdx];
+  const last = stageIdx >= SOMBREROS.length - 1;
+  const stage = SOMBREROS[stageIdx];
   const hero = ROSTER[p1];
   const rival = ROSTER[p2];
   const click = (fn: () => void) => () => {
@@ -71,11 +70,11 @@ export function MatchModal({ type, mode, stageIdx, p1, p2, onResume, onRestart, 
   };
 
   let heading = 'Pausa';
-  let sub = stage.spanishTitle;
+  let sub = `Nivel ${stage.level}: ${stage.name}`;
   let tone = '';
   if (type === 'victory') {
     heading = story ? (last ? '¡Campeón de Mictlán!' : '¡Sombrero conquistado!') : `¡${hero.name} vence!`;
-    sub = story ? (last ? 'Huesos cae y las almas cruzan hacia la vida.' : `El siguiente sombrero espera: ${SOMBRERO_STAGES[stageIdx + 1].name}.`) : 'Un combate para recordar en la Noche de Muertos.';
+    sub = story ? (last ? 'Huesos cae y las almas cruzan hacia la vida.' : `El siguiente sombrero espera: ${SOMBREROS[stageIdx + 1].name}.`) : 'Un combate para recordar en la Noche de Muertos.';
   } else if (type === 'defeat') {
     heading = story ? '¡Has caído!' : `¡${rival.name} vence!`;
     sub = story ? 'Tu espíritu aún no se rinde. Levántate y vuelve a subir.' : 'Una revancha cura cualquier derrota.';

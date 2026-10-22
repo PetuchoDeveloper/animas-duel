@@ -17,24 +17,28 @@ export function Backdrop({ stage = 0, dim = 0.5 }: { stage?: number; dim?: numbe
   useEffect(() => {
     let stopped = false;
     let raf = 0;
-    loadAssets().then((assets) => {
-      const canvas = ref.current;
-      const ctx = canvas?.getContext('2d', { alpha: false });
-      if (stopped || !canvas || !ctx) return;
-      canvas.width = 480;
-      canvas.height = 270;
-      const scene = new Renderer(ctx, assets, stage, 'versus');
-      let last = 0;
-      const loop = (t: number) => {
+    loadAssets()
+      .then((assets) => {
+        const canvas = ref.current;
+        const ctx = canvas?.getContext('2d', { alpha: false });
+        if (stopped || !canvas || !ctx) return;
+        canvas.width = 480;
+        canvas.height = 270;
+        const scene = new Renderer(ctx, assets, stage, 'versus');
+        let last = 0;
+        const loop = (t: number) => {
+          raf = requestAnimationFrame(loop);
+          if (t - last < 32) return;
+          last = t;
+          scene.animate();
+          scene.animate();
+          scene.scenery(dim);
+        };
         raf = requestAnimationFrame(loop);
-        if (t - last < 32) return;
-        last = t;
-        scene.animate();
-        scene.animate();
-        scene.scenery(dim);
-      };
-      raf = requestAnimationFrame(loop);
-    });
+      })
+      .catch(() => {
+        // the menu still works over a plain background if the art cannot load
+      });
     return () => {
       stopped = true;
       cancelAnimationFrame(raf);

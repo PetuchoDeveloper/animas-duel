@@ -9,6 +9,8 @@ class SoundSystem {
   private isMuted: boolean = false;
   private bgmInterval: number | null = null;
   private bgmPlaying: boolean = false;
+  /** The game wants music; muting only silences it, so unmuting must not start music nobody asked for. */
+  private bgmWanted: boolean = false;
 
   private initCtx() {
     if (!this.ctx) {
@@ -22,11 +24,8 @@ class SoundSystem {
 
   public toggleMute(): boolean {
     this.isMuted = !this.isMuted;
-    if (this.isMuted) {
-      this.stopBGM();
-    } else {
-      this.startBGM();
-    }
+    if (this.isMuted) this.haltBGM();
+    else if (this.bgmWanted) this.beginBGM();
     return this.isMuted;
   }
 
@@ -316,33 +315,140 @@ class SoundSystem {
     });
   }
 
-  /**
-   * Starts procedural background Day of the Dead acoustic guitar loop
-   */
+  // ------------------------------------------------------------------ background music
+  // A little mariachi loop: oom-pah bass and strum, a shaker on every step and a trumpet
+  // tune every four bars. Scheduled a fraction of a second ahead so it never drifts.
+
+  private static readonly STEP = 60 / 138 / 2; // an eighth note at 138 bpm
+  private static readonly BARS = [
+    { bass: [110, 164.81], chord: [220, 261.63, 329.63] }, // A minor
+    { bass: [87.31, 130.81], chord: [174.61, 220, 261.63] }, // F
+    { bass: [98, 146.83], chord: [196, 246.94, 293.66] }, // G
+    { bass: [82.41, 123.47], chord: [164.81, 207.65, 246.94] }, // E
+  ];
+  // [step within the 32-step loop, frequency, length in steps]
+  private static readonly TUNE: [number, number, number][] = [
+    [0, 659.25, 2], [2, 659.25, 1], [3, 587.33, 1], [4, 523.25, 2], [6, 493.88, 2],
+    [8, 440, 2], [10, 523.25, 2], [12, 440, 3],
+    [16, 392, 2], [18, 493.88, 2], [20, 587.33, 2], [22, 493.88, 2],
+    [24, 415.3, 2], [26, 493.88, 2], [28, 659.25, 4],
+  ];
+  private musicBus: GainNode | null = null;
+  private nextStepTime = 0;
+  private step = 0;
+
+  private tone(freq: number, time: number, dur: number, type: OscillatorType, vol: number, lowpass = 0, vibrato = false) {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicBus) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, time);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.linearRampToValueAtTime(vol, time + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+    let tail: AudioNode = osc;
+    if (lowpass) {
+      const f = ctx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = lowpass;
+      osc.connect(f);
+      tail = f;
+    }
+    tail.connect(gain);
+    gain.connect(this.musicBus);
+    if (vibrato) {
+      const lfo = ctx.createOscillator();
+      const depth = ctx.createGain();
+      lfo.frequency.value = 5.5;
+      depth.gain.value = freq * 0.012;
+      lfo.connect(depth);
+      depth.connect(osc.frequency);
+      lfo.start(time);
+      lfo.stop(time + dur + 0.05);
+    }
+    osc.start(time);
+    osc.stop(time + dur + 0.05);
+  }
+
+  private shaker(time: number, vol: number) {
+    const ctx = this.ctx;
+    if (!ctx || !this.musicBus) return;
+    const len = Math.floor(ctx.sampleRate * 0.05);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 5500;
+    const gain = ctx.createGain();
+    gain.gain.value = vol;
+    src.connect(hp);
+    hp.connect(gain);
+    gain.connect(this.musicBus);
+    src.start(time);
+  }
+
+  private playStep(step: number, time: number) {
+    const bar = SoundSystem.BARS[Math.floor(step / 8) % 4];
+    const s = step % 8;
+    if (s % 2 === 0) this.tone(bar.bass[(s / 2) % 2], time, 0.34, 'triangle', 0.3, 500);
+    else bar.chord.forEach((f, i) => this.tone(f, time + i * 0.014, 0.28, 'triangle', s === 3 || s === 7 ? 0.075 : 0.05));
+    this.shaker(time, s % 2 ? 0.07 : 0.035);
+    for (const [at, f, len] of SoundSystem.TUNE) {
+      if (at === step % 32) this.tone(f, time, len * SoundSystem.STEP * 0.95, 'sawtooth', 0.05, 2200, true);
+    }
+  }
+
   public startBGM() {
-    if (this.bgmPlaying || this.isMuted) return;
-    this.initCtx();
-    this.bgmPlaying = true;
-
-    const progression: Array<'A_minor' | 'F_major' | 'G_major' | 'E_major'> = [
-      'A_minor', 'F_major', 'G_major', 'E_major',
-    ];
-    let step = 0;
-
-    this.bgmInterval = window.setInterval(() => {
-      if (this.isMuted || !this.bgmPlaying) return;
-      const chord = progression[step % progression.length];
-      this.playGuitarChord(chord);
-      step++;
-    }, 700);
+    this.bgmWanted = true;
+    this.beginBGM();
   }
 
   public stopBGM() {
+    this.bgmWanted = false;
+    this.haltBGM();
+  }
+
+  private beginBGM() {
+    if (this.bgmPlaying || this.isMuted) return;
+    this.initCtx();
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.bgmPlaying = true;
+    if (!this.musicBus) {
+      this.musicBus = ctx.createGain();
+      this.musicBus.gain.value = 0.6;
+      this.musicBus.connect(ctx.destination);
+    }
+    this.musicBus.gain.cancelScheduledValues(ctx.currentTime);
+    this.musicBus.gain.setValueAtTime(0.6, ctx.currentTime);
+    this.step = 0;
+    this.nextStepTime = ctx.currentTime + 0.08;
+    this.bgmInterval = window.setInterval(() => {
+      while (this.nextStepTime < ctx.currentTime + 0.2) {
+        this.playStep(this.step++, this.nextStepTime);
+        this.nextStepTime += SoundSystem.STEP;
+      }
+    }, 40);
+  }
+
+  private haltBGM() {
     this.bgmPlaying = false;
     if (this.bgmInterval !== null) {
       clearInterval(this.bgmInterval);
       this.bgmInterval = null;
     }
+  }
+
+  /** Quieter music while a menu or the pause panel is up. */
+  public duck(on: boolean) {
+    if (!this.ctx || !this.musicBus) return;
+    const now = this.ctx.currentTime;
+    this.musicBus.gain.cancelScheduledValues(now);
+    this.musicBus.gain.setTargetAtTime(on ? 0.22 : 0.6, now, 0.08);
   }
 }
 

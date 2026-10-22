@@ -99,18 +99,20 @@ export function stock(S, o = {}) {
     base({ root: [-3, 3], lean: -8, head: [-2, 1], handF: [gF[0] - 4, gF[1]], handB: [gB[0] - 6, gB[1]], face: 'hurt' }),
   ];
 
-  // lying on the back, head pointing away from the opponent
+  // lying on the back, head pointing away from the opponent. root.y is relative to the standing
+  // pelvis, so a body on the floor sits S.hipH - 9 below it.
   const L = S.torso;
+  const lie = S.hipH - 9;
   const ko = [
     P({ root: [-9, -12], lean: -38, head: [-2, 0], footF: [8, -14], footB: [2, -8], handF: [-6, -sh - 4], handB: [-12, -sh + 4], face: 'ko' }),
-    P({ root: [-16, -10], lean: -68, footF: [10, -14], footB: [3, -10], handF: [-14, -sh + 10], handB: [-24, -sh + 16], face: 'ko' }),
-    P({ root: [-14, -5], lean: -86, footF: [S.thigh + S.shin * 0.7, -4], footB: [S.thigh + S.shin * 0.45, -9], handF: [-L - 4, -4], handB: [-L, -8], face: 'ko' }),
-    P({ root: [-14, -6], lean: -88, footF: [S.thigh + S.shin * 0.75, -3], footB: [S.thigh + S.shin * 0.5, -8], handF: [-L - 8, -5], handB: [-L - 2, -9], face: 'ko' }),
-    P({ root: [-14, -6], lean: -88, footF: [S.thigh + S.shin * 0.75, -3], footB: [S.thigh + S.shin * 0.5, -8], handF: [-L - 8, -4], handB: [-L - 3, -8], face: 'ko' }),
+    P({ root: [-14, S.hipH * 0.35], lean: -68, footF: [10, -14], footB: [3, -10], handF: [-14, -sh + 10], handB: [-24, -sh + 16], face: 'ko' }),
+    P({ root: [-14, lie], lean: -86, footF: [S.thigh + S.shin * 0.7, -4], footB: [S.thigh + S.shin * 0.45, -9], handF: [-L - 4, -4], handB: [-L, -8], face: 'ko' }),
+    P({ root: [-14, lie], lean: -88, footF: [S.thigh + S.shin * 0.75, -3], footB: [S.thigh + S.shin * 0.5, -8], handF: [-L - 8, -5], handB: [-L - 2, -9], face: 'ko' }),
+    P({ root: [-14, lie], lean: -88, footF: [S.thigh + S.shin * 0.75, -3], footB: [S.thigh + S.shin * 0.5, -8], handF: [-L - 8, -4], handB: [-L - 3, -8], face: 'ko' }),
   ];
   const getup = [
-    P({ root: [-12, -9], lean: -64, footF: [S.thigh + 6, -6], footB: [S.thigh, -2], handF: [-8, -8], handB: [-18, -12], face: 'hurt' }),
-    P({ root: [-6, 4], lean: -30, footF: [stance + 4, 0], footB: [-stance, 0], handF: [4, -14], handB: [-8, -14], face: 'hurt' }),
+    P({ root: [-12, S.hipH - 16], lean: -64, footF: [S.thigh + 6, -6], footB: [S.thigh, -2], handF: [-8, -8], handB: [-18, -12], face: 'hurt' }),
+    P({ root: [-6, 8], lean: -30, footF: [stance + 4, 0], footB: [-stance, 0], handF: [4, -14], handB: [-8, -14], face: 'hurt' }),
     base({ root: [-2, 5], lean: 0, handF: [gF[0] - 2, gF[1] - 6], handB: [gB[0] - 4, gB[1] - 6] }),
   ];
   const dodge = [

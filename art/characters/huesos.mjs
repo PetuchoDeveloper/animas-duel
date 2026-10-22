@@ -65,29 +65,27 @@ export function drawFrame(p) {
     ellipse(L, l.ex, l.ey, w + 0.9, w + 0.9, lit(BONE), BONE.ink);
   };
   const foot = (f) => (L) => ellipse(L, f.hx + 3, f.hy + 0.4, 6, 2.6, lit(BONE), BONE.ink);
+  // position relative to the pelvis, turning with the torso so a fallen body keeps its robe around it
+  const cs = Math.cos(J.lean), sn = Math.sin(J.lean);
+  const at = (a, b) => [pelvis[0] + cs * a - sn * b, pelvis[1] + sn * a + cs * b];
+
   // ragged robe skirt hanging from the hips to mid-shin
   const skirt = (L) => {
     const w = fl * 6;
-    const top = pelvis[1] - 4;
-    const hemY = pelvis[1] + S.hipH * 0.62;
-    const x0 = pelvis[0] - 11, x1 = pelvis[0] + 11;
-    const pts = [[x0, top], [x1, top]];
-    const teeth = [0, 1, 2, 3, 4, 5, 6];
-    teeth.forEach((i) => {
+    const hem = S.hipH * 0.62;
+    const pts = [at(-11, -4), at(11, -4)];
+    for (let i = 0; i <= 6; i++) {
       const u = i / 6;
-      const x = x1 - u * (x1 - x0) - w * u * 0.8;
-      pts.push([x + (i % 2 ? 1.5 : -1.2), hemY + (i % 2 ? 7 : 0) + u * fl * 3]);
-    });
+      pts.push(at(11 - u * 22 - w * u * 0.8 + (i % 2 ? 1.5 : -1.2), hem + (i % 2 ? 7 : 0) + u * fl * 3));
+    }
     poly(L, pts, lit(ROBE, { dither: true }), ROBE.ink, 3.2);
-    // red lining flash on the hem
-    for (let i = 2; i < pts.length - 1; i += 2) L.set(Math.round(pts[i][0]), Math.round(pts[i][1]) - 1, C(LINING.m));
+    for (let i = 4; i < pts.length - 1; i += 2) L.set(Math.round(pts[i][0]), Math.round(pts[i][1]) - 1, C(LINING.m));
   };
 
   // rear cloak billow
   part(img, (L) => {
-    const a = J.shB;
     const w = fl * 8;
-    poly(L, [[a[0] - 2, a[1] - 6], [a[0] - 12 - w * 0.5, a[1] + 8], [a[0] - 16 - w * 1.2, pelvis[1] + 22], [a[0] - 13 - w * 1.6, pelvis[1] + 34], [pelvis[0] - 3, pelvis[1] + 30], [pelvis[0] + 2, pelvis[1] + 4]], lit(ROBE, { dither: true }), ROBE.ink, 3.4);
+    poly(L, [at(-6, -S.torso - 2), at(-14 - w * 0.5, -S.torso * 0.2), at(-18 - w * 1.2, 22), at(-15 - w * 1.6, 34), at(-3, 30), at(2, 4)], lit(ROBE, { dither: true }), ROBE.ink, 3.4);
   });
 
   part(img, sleeve(J.shB, J.armB));
@@ -177,9 +175,9 @@ function hold(x, y, ang) {
 export const portrait = { box: [34, 14], pose: (face) => pose(P({ face }), { scythe: null }) };
 
 export function animations() {
-  const idle = st.idle.map((q, i) => pose(q, { ...hold(16, chest + 4 + [0, 0.5, 1, 0.4][i], -80), cape: 0.2 + 0.15 * i }));
-  const walk = st.walk.map((q, i) => pose(q, { ...hold(16, chest + 4 + Math.abs(Math.sin((i / 6) * Math.PI)) * 1.2, -78), cape: 0.5 + 0.3 * Math.sin((i / 6) * Math.PI * 2) }));
-  const jump = st.jump.map((q, i) => pose(q, { ...hold(14, chest + 2 - [2, 4, 0][i], [-72, -64, -86][i]), cape: 1 }));
+  const idle = st.idle.map((q, i) => pose(q, { ...hold(16, chest + 10 + [0, 0.5, 1, 0.4][i], -80), cape: 0.2 + 0.15 * i }));
+  const walk = st.walk.map((q, i) => pose(q, { ...hold(16, chest + 10 + Math.abs(Math.sin((i / 6) * Math.PI)) * 1.2, -78), cape: 0.5 + 0.3 * Math.sin((i / 6) * Math.PI * 2) }));
+  const jump = st.jump.map((q, i) => pose(q, { ...hold(14, chest + 8 - [2, 4, 0][i], [-72, -64, -86][i]), cape: 1 }));
   const land = st.land.map((q) => pose(q, { ...hold(14, chest + 12, -80), cape: 0.1 }));
 
   const light = [
@@ -228,7 +226,7 @@ export function animations() {
   const getup = st.getup.map((q, i) => pose(q, { cape: 0.4, scythe: i < 2 ? { x: 24, y: -4, ang: 0 } : undefined, ...(i === 2 ? hold(14, chest + 10, -80) : {}) }));
   const dodge = st.dodge.map((q) => pose(q, { ...hold(10, chest + 14, -50), cape: 1 }));
   const block = st.guard.map((q, i) => pose(q, { ...hold(12, chest + 4, -88 - i * 2), cape: 0.2, handF: [12, chest - 8], handB: [10, chest + 2] }));
-  const win = st.win.map((q, i) => pose(q, { ...hold(4, [chest + 6, chest - 10, chest - 8, chest - 6][i], [-80, -108, -104, -98][i]), cape: 0.5 + 0.2 * i }));
+  const win = st.win.map((q, i) => pose(q, { ...hold(10, [chest + 12, chest + 8, chest + 8, chest + 10][i], [-80, -92, -90, -88][i]), cape: 0.5 + 0.2 * i }));
 
   const draw = (a) => a.map(drawFrame);
   return {

@@ -4,8 +4,7 @@
  */
 
 import { ATLAS, type AnimMeta, type Assets } from './assets';
-import { ROSTER, SUPER_NAMES } from './roster';
-import { SOMBRERO_STAGES } from './combatRules';
+import { ROSTER, SOMBREROS, SUPER_NAMES } from './roster';
 import type { FighterState, GameMode, Sim, SimEvent, SimFighter, Slot } from './sim';
 
 export const W = 480;
@@ -118,7 +117,7 @@ export class Renderer {
           const final = a.roundsWon === 1 && b.roundsWon === 1;
           this.banner = {
             text: final ? 'RONDA FINAL' : `RONDA ${e.round}`,
-            sub: e.round === 1 ? SOMBRERO_STAGES[this.stage].name : undefined,
+            sub: e.round === 1 ? SOMBREROS[this.stage].name : undefined,
             age: 0, life: 70, color: '#ffd856',
           };
           break;
@@ -423,7 +422,7 @@ export class Renderer {
     if (blinkOut) return;
     // a body lying in the corner would otherwise be cut off by the screen edge
     const down = f.state === 'knockdown' || f.state === 'ko';
-    const x = down ? Math.max(52, Math.min(W - 52, f.x)) : f.x;
+    const x = down ? Math.max(60, Math.min(W - 60, f.x)) : f.x;
     this.drawCell(f.charId, anim, frame, x, GROUND + f.y, f.facing);
     if (f.flash > 0) this.drawCell(f.charId, anim, frame, x, GROUND + f.y, f.facing, true, 0.85);
     if (f.state === 'super' && sim.freeze === 0 && f.phase !== 'recovery') this.drawAura(f);

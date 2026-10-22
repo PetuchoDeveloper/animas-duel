@@ -4,7 +4,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateDamage, checkCollision, addSuperMeter, canExecuteSuper, resolveTimeout, SOMBRERO_STAGES } from './combatRules.ts';
+import { calculateDamage, checkCollision, addSuperMeter, canExecuteSuper, resolveTimeout } from './combatRules.ts';
 
 test('damage scales monotonically to a 25 percent floor; helper chip stays positive', () => {
   let last = 20;
@@ -40,9 +40,4 @@ test('timeout compares remaining health, including equality and double KO', () =
   assert.equal(resolveTimeout(50, 50), 'DRAW');
   assert.equal(resolveTimeout(0, 0), 'DRAW');
   assert.equal(resolveTimeout(0, 1), 'P2');
-});
-
-test('sombrero stage progression remains available to the existing renderer', () => {
-  assert.equal(SOMBRERO_STAGES.length, 3);
-  assert.deepEqual(SOMBRERO_STAGES.map(s => s.damageState), ['pristine', 'cracked', 'shattered']);
 });

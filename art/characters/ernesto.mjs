@@ -254,7 +254,7 @@ export function animations() {
   const getup = st.getup.map((q, i) => pose(q, { cape: 0.4, hatOff: i < 2 ? [-40, -2] : null, guitar: i < 2 ? { x: 26, y: -5, ang: 0 } : { x: 6, y: chestY + 14, ang: -30 }, ...(i === 2 ? hold(6, chestY + 12, -30) : {}) }));
   const dodge = st.dodge.map((q) => pose(q, { ...hold(6, chestY + 14, -20), cape: 1 }));
   const block = st.guard.map((q, i) => pose(q, { ...hold(8, chestY + 6, -88 - i * 2), cape: 0.2, handF: [10, chestY - 10], handB: [9, chestY + 2] }));
-  const win = st.win.map((q, i) => pose(q, { ...hold(0, [-62, -76, -72, -68][i], [-50, -88, -80, -70][i]), cape: 0.5 + 0.2 * i }));
+  const win = st.win.map((q, i) => pose(q, { ...hold(14, [-72, -94, -90, -86][i], [-40, -66, -62, -58][i]), cape: 0.5 + 0.2 * i }));
 
   const draw = (a) => a.map(drawFrame);
   return {

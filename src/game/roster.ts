@@ -98,3 +98,16 @@ export const SUPER_NAMES: Record<string, string> = {
   elmacho: 'Erupción del Coloso',
   huesos: 'Cosecha de Almas',
 };
+
+export interface Sombrero {
+  level: number;
+  name: string;
+  blurb: string;
+}
+
+/** The three arenas, in story order. Index matches the stage art and the boss in BOSSES. */
+export const SOMBREROS: Sombrero[] = [
+  { level: 1, name: 'El Gran Sombrero Dorado', blurb: 'Terciopelo negro, bordados de oro y monedas de plata sobre la plaza iluminada con veladoras.' },
+  { level: 2, name: 'El Sombrero Agrietado', blurb: 'Fieltro rasgado y flecos cortados; grietas de luz espiritual bajo nubes de tormenta.' },
+  { level: 3, name: 'El Sombrero de Mictlán', blurb: 'Hecho pedazos que flotan sobre el abismo, atados por cadenas de almas.' },
+];

@@ -11,8 +11,7 @@ import { LoreModal, MatchModal } from './components/MatchModal';
 import { SplashScreen } from './components/SplashScreen';
 import { TitleScreen } from './components/TitleScreen';
 import { gameAudio } from './game/audio';
-import { SOMBRERO_STAGES } from './game/combatRules';
-import { BOSSES, ROSTER } from './game/roster';
+import { BOSSES, ROSTER, SOMBREROS } from './game/roster';
 import type { GameMode, Slot } from './game/sim';
 import { STORY_DATA, type DialogueLine } from './game/storyDialogues';
 
@@ -61,7 +60,7 @@ export default function App() {
     setP2(BOSSES[level]);
     setScene({
       lines: STORY_DATA[hero][INTROS[level]],
-      title: `Nivel ${level + 1} · ${SOMBRERO_STAGES[level].name} · Jefe: ${ROSTER[BOSSES[level]].name}`,
+      title: `Nivel ${level + 1} · ${SOMBREROS[level].name} · Jefe: ${ROSTER[BOSSES[level]].name}`,
     });
     setScreen('dialogue');
   };
@@ -89,7 +88,14 @@ export default function App() {
   return (
     <div className="flex h-full w-full items-center justify-center bg-ink">
       <div className="screen">
-        {screen === 'splash' && <SplashScreen onFinish={() => setScreen('title')} />}
+        {screen === 'splash' && (
+          <SplashScreen
+            onFinish={() => {
+              gameAudio.startBGM();
+              setScreen('title');
+            }}
+          />
+        )}
 
         {screen === 'title' && (
           <TitleScreen

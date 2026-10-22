@@ -24,7 +24,8 @@ Story (one player vs the computer), local versus, and practice (a dummy that nev
 | Dodge / super | `H` / `Space` | `'` / `Enter` |
 
 Alone, the arrow keys and `J K L U Enter` also work for player one. Gamepads: stick or d-pad, `X` light, `Y` heavy,
-`B` special, `A` dodge, trigger for the super. `Esc` pauses, `M` mutes.
+`B` special, `A` dodge, trigger for the super. On touch screens a d-pad and attack buttons appear over the
+battle (player one only). `Esc` pauses, `M` mutes.
 
 Hold back (or down) to block. A normal that connects can be cancelled into a stronger one
 (light, heavy, special, super), so `F G V` chains. The super needs a full Calavera gauge.

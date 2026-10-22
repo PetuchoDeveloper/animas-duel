@@ -40,6 +40,9 @@ export class FightEngine {
   private renderer: Renderer;
   private ai: ((sim: Sim) => Input) | null = null;
   private held = new Set<string>();
+  /** Keys pressed since the last tick, so a tap shorter than one frame still reaches the sim. */
+  private tapped = new Set<string>();
+  private touch: Partial<Input> = {};
   private paused = false;
   private raf = 0;
   private last = 0;
@@ -65,7 +68,6 @@ export class FightEngine {
   }
 
   start(): void {
-    gameAudio.startBGM();
     this.last = performance.now();
     this.raf = requestAnimationFrame(this.frame);
   }
@@ -74,11 +76,15 @@ export class FightEngine {
     if (this.paused === paused) return;
     this.paused = paused;
     this.held.clear();
-    if (paused) gameAudio.stopBGM();
-    else {
-      gameAudio.startBGM();
-      this.last = performance.now();
-    }
+    this.tapped.clear();
+    this.touch = {};
+    gameAudio.duck(paused);
+    if (!paused) this.last = performance.now();
+  }
+
+  /** Touch buttons feed player one. */
+  setTouch(key: keyof Input, down: boolean): void {
+    this.touch[key] = down;
   }
 
   /** Dev/test hook: advance exactly `ticks` simulation ticks with fixed inputs, then redraw. Silent. */
@@ -92,25 +98,19 @@ export class FightEngine {
     this.renderer.draw(this.sim);
   }
 
-  /** Start the whole match again from round one. */
-  restart(): void {
-    this.sim.reset();
-    this.renderer.reset();
-    this.overReported = false;
-    this.acc = 0;
-    this.held.clear();
-  }
-
   destroy(): void {
     cancelAnimationFrame(this.raf);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
-    gameAudio.stopBGM();
+    gameAudio.duck(false);
   }
 
+  // While paused the pause panel owns the keyboard: Enter and Space must reach its buttons.
   private onKeyDown = (e: KeyboardEvent): void => {
+    if (this.paused) return;
     if (GAME_KEYS.has(e.code)) e.preventDefault();
+    if (!this.held.has(e.code)) this.tapped.add(e.code);
     this.held.add(e.code);
   };
   private onKeyUp = (e: KeyboardEvent): void => {
@@ -118,6 +118,7 @@ export class FightEngine {
   };
   private onBlur = (): void => {
     this.held.clear();
+    this.tapped.clear();
   };
 
   private frame = (now: number): void => {
@@ -135,8 +136,10 @@ export class FightEngine {
 
   private tick(): void {
     const { sim } = this;
-    const p1 = this.readInput(P1_KEYS, 0, this.opts.mode !== 'versus' ? SOLO_EXTRA : undefined);
+    const solo = this.opts.mode !== 'versus';
+    const p1 = this.readInput(P1_KEYS, 0, solo ? SOLO_EXTRA : undefined);
     const p2 = this.ai ? this.ai(sim) : this.opts.mode === 'versus' ? this.readInput(P2_KEYS, 1) : NO_INPUT;
+    this.tapped.clear();
     sim.step([p1, p2]);
     this.renderer.update(sim);
     this.renderer.consume(sim.events, sim);
@@ -150,12 +153,16 @@ export class FightEngine {
   }
 
   private readInput(keys: Record<Key, string[]>, pad: number, extra?: Partial<Record<Key, string[]>>): Input {
-    const down = (k: Key) => keys[k].some((c) => this.held.has(c)) || (extra?.[k]?.some((c) => this.held.has(c)) ?? false);
+    const isDown = (c: string) => this.held.has(c) || this.tapped.has(c);
+    const down = (k: Key) => keys[k].some(isDown) || (extra?.[k]?.some(isDown) ?? false);
     const input: Input = {
       left: down('left'), right: down('right'), up: down('up'), down: down('down'),
       light: down('light'), heavy: down('heavy'), special: down('special'), dodge: down('dodge'), super: down('super'),
     };
-    const gp = navigator.getGamepads?.()[pad];
+    if (pad === 0) for (const k of Object.keys(this.touch) as Key[]) input[k] ||= this.touch[k] ?? false;
+    // against the computer any connected pad drives player one; in versus each player has their own
+    const pads = [...(navigator.getGamepads?.() ?? [])];
+    const gp = this.opts.mode === 'versus' ? pads[pad] : pads.find((g) => g) ?? null;
     if (gp) {
       const b = (i: number) => gp.buttons[i]?.pressed ?? false;
       input.left ||= gp.axes[0] < -0.4 || b(14);
