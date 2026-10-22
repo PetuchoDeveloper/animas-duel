@@ -47,7 +47,7 @@ function scythe(L, g) {
   ellipse(L, t[0], t[1], 2.8, 2.8, lit(STEEL), STEEL.ink);
 }
 
-function drawFrame(p) {
+export function drawFrame(p) {
   const img = newFrame();
   const J = solve(S, p);
   const { pelvis, neck, head, up, side } = J;
@@ -172,6 +172,9 @@ function hold(x, y, ang) {
     handB: [x - d[0] * 12, y - d[1] * 12],
   };
 }
+
+/** Bust shot for the select and dialogue screens: a 64x64 window onto the idle pose. */
+export const portrait = { box: [34, 14], pose: (face) => pose(P({ face }), { scythe: null }) };
 
 export function animations() {
   const idle = st.idle.map((q, i) => pose(q, { ...hold(16, chest + 4 + [0, 0.5, 1, 0.4][i], -80), cape: 0.2 + 0.15 * i }));

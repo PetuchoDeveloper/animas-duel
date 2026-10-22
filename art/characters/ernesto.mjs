@@ -83,7 +83,7 @@ function stripe(L, hip, j) {
   seg([j.ex, j.ey], [j.hx, j.hy], -3);
 }
 
-function drawFrame(p) {
+export function drawFrame(p) {
   const img = newFrame();
   const J = solve(S, p);
   const { pelvis, neck, head, up, side } = J;
@@ -196,6 +196,9 @@ function hold(x, y, ang, open = false) {
   };
 }
 const chestY = -(S.hipH + S.torso * 0.5);
+
+/** Bust shot for the select and dialogue screens: a 64x64 window onto the idle pose. */
+export const portrait = { box: [34, 10], pose: (face) => pose(P({ face }), { guitar: null }) };
 
 export function animations() {
   const idle = st.idle.map((q, i) => pose(q, { ...hold(5, chestY + 6 + [0, 0.6, 1.2, 0.5][i], -34), cape: 0.2 + 0.1 * i }));

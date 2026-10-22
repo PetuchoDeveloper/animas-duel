@@ -29,7 +29,7 @@ const EYE_SHUT = ['kkkkk'];
 
 const shadeBelly = (i) => (i.nx * -0.3 + i.ny * -0.6 > 0.35 ? C(SKIN.l) : null);
 
-function drawFrame(p) {
+export function drawFrame(p) {
   const img = newFrame();
   const J = solve(S, p);
   const { pelvis, neck, head, up, side } = J;
@@ -135,6 +135,9 @@ function drawFrame(p) {
 const st = stock(S, { stance: 12, stride: 9, blink: true, guard: [[19, -(S.hipH + S.torso * 0.62)], [14, -(S.hipH + S.torso * 0.5) + 2]] });
 const P = st.P;
 const chest = -(S.hipH + S.torso * 0.62), sh = -(S.hipH + S.torso - 5);
+
+/** Bust shot for the select and dialogue screens: a 64x64 window onto the idle pose. */
+export const portrait = { box: [34, 4], pose: (face) => P({ face, handF: [17, -30], handB: [8, -32] }) };
 
 export function animations() {
   const idle = st.idle.map((q, i) => pose(q, { cape: 0.2 + 0.15 * i }));

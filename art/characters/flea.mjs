@@ -24,7 +24,7 @@ const EYE_X = ['k...k', '.k.k.', '..k..', '.k.k.', 'k...k'];
 const EYE_HAPPY = ['..kk..', '.k..k.', 'k....k'];
 const EYE_SHUT = ['kkkkk'];
 
-function drawFrame(p) {
+export function drawFrame(p) {
   const img = newFrame();
   const J = solve(S, p);
   const { pelvis, neck, head, up, side } = J;
@@ -138,6 +138,9 @@ const P = st.P;
 const FX = (a, b) => [a, b];
 // glove heights above ground
 const chest = -(S.hipH + S.torso * 0.62), shoulder = -(S.hipH + S.torso - 3);
+
+/** Bust shot for the select and dialogue screens: a 64x64 window onto the idle pose. */
+export const portrait = { box: [34, 20], pose: (face) => P({ face, handF: [15, -24], handB: [6, -26] }) };
 
 export function animations() {
   const idle = st.idle.map((q, i) => pose(q, { ant: [0, -1.5, -2.5, -1][i] }));

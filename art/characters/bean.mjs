@@ -234,6 +234,9 @@ function walkFrames() {
   return out;
 }
 
+/** Bust shot for the select and dialogue screens: a 64x64 window onto the idle pose. */
+export const portrait = { box: [34, 36], pose: (face) => P({ face, handF: [17, -11], handB: [7, -13] }) };
+
 export function animations() {
   const idle = [
     P({ handF: [15, -15], handB: [6, -16] }),
