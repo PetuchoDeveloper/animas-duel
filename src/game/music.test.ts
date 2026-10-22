@@ -216,7 +216,7 @@ test('wanted track and intensity survive gesture deferral and mute; invalid jump
     assert.equal(engineState.intensity, 0); assert.equal(engineState.current?.section, 'chorus');
     sound.jumpTo('missing'); assert.equal(state.wanted.section, 'chorus');
     sound.toggleMute(); assert.equal(engineState.current, undefined);
-    sound.jumpTo('final'); sound.toggleMute(); assert.equal(engineState.current?.section, 'final');
+    sound.jumpTo('final'); sound.toggleMute(); assert.equal((state.music as unknown as typeof engineState).current?.section, 'final');
     sound.toggleMute(); sound.stopMusic(); sound.toggleMute(); assert.equal(engineState.current, undefined);
   } finally {
     sound.stopMusic(0);
