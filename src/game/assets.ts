@@ -30,6 +30,10 @@ interface Atlas {
   fighters: Record<string, FighterAtlas>;
   portraits: { size: number; moods: string[]; order: string[] };
   fx: { cell: number; rows: Record<string, FxRow> };
+  /** The story map: where the hero stands on each sombrero, the road between them, and the hat sprite size. */
+  map: { nodes: { x: number; y: number }[]; road: [number, number][]; nodeAt: number[]; hat: { w: number; h: number } };
+  /** Cells of hazards.png: the barrel's rolling frames and the anvil. */
+  hazards: { barrel: { x: number; y: number; w: number; h: number; frames: number }; anvil: { x: number; y: number; w: number; h: number } };
 }
 
 export const ATLAS = atlasData as unknown as Atlas;
@@ -52,6 +56,8 @@ export interface Assets {
   pipEmpty: HTMLImageElement;
   petals: HTMLImageElement;
   portraits: HTMLImageElement;
+  hazards: HTMLImageElement;
+  map: { back: HTMLImageElement; hats: HTMLImageElement; icons: HTMLImageElement };
   /** White silhouettes of each sprite sheet, used for the hit flash. */
   flash: Record<string, HTMLCanvasElement>;
 }
@@ -83,7 +89,7 @@ let cached: Promise<Assets> | null = null;
 export function loadAssets(): Promise<Assets> {
   cached ??= (async () => {
     const ids = Object.keys(ATLAS.fighters);
-    const [fighterImgs, fx, backs, fgs, pipWon, pipEmpty, petals, portraits] = await Promise.all([
+    const [fighterImgs, fx, backs, fgs, pipWon, pipEmpty, petals, portraits, hazards, mapBack, mapHats, mapIcons] = await Promise.all([
       Promise.all(ids.map((id) => load(url(`sprites/${id}.png`)))),
       load(url('sprites/fx.png')),
       Promise.all([1, 2, 3].map((n) => load(url(`stages/stage${n}-back.png`)))),
@@ -92,6 +98,10 @@ export function loadAssets(): Promise<Assets> {
       load(url('ui/pip-empty.png')),
       load(url('ui/petals.png')),
       load(url('sprites/portraits.png')),
+      load(url('sprites/hazards.png')),
+      load(url('ui/map.png')),
+      load(url('ui/map-hats.png')),
+      load(url('ui/map-icons.png')),
       document.fonts.load('8px "Press Start 2P"'),
     ]);
     return {
@@ -103,6 +113,8 @@ export function loadAssets(): Promise<Assets> {
       pipEmpty,
       petals,
       portraits,
+      hazards,
+      map: { back: mapBack, hats: mapHats, icons: mapIcons },
       flash: Object.fromEntries(ids.map((id, i) => [id, silhouette(fighterImgs[i])])),
     };
   })();

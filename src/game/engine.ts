@@ -32,6 +32,8 @@ export interface MatchOptions {
   p2: string;
   stage: number;
   mode: GameMode;
+  /** El Macho's sabotage in story mode: barrels on the first sombrero, anvils on the second. */
+  trouble?: 'barrels' | 'anvils' | null;
   onMatchOver: (winner: Slot) => void;
 }
 
@@ -48,6 +50,8 @@ export class FightEngine {
   private last = 0;
   private acc = 0;
   private overReported = false;
+  /** Sim ticks of slow motion left after a knockout. */
+  private slowTicks = 0;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -58,7 +62,7 @@ export class FightEngine {
     canvas.height = 270;
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) throw new Error('2D canvas is not available');
-    this.sim = new Sim({ p1: opts.p1, p2: opts.p2, mode: opts.mode });
+    this.sim = new Sim({ p1: opts.p1, p2: opts.p2, mode: opts.mode, trouble: opts.trouble });
     this.renderer = new Renderer(ctx, assets, opts.stage, opts.mode);
     this.renderer.setCharacters([opts.p1, opts.p2]);
     if (opts.mode === 'story') this.ai = createAI({ slot: 1, difficulty: Math.min(2, opts.stage) as 0 | 1 | 2, rng: Math.random });
@@ -124,7 +128,7 @@ export class FightEngine {
   private frame = (now: number): void => {
     this.raf = requestAnimationFrame(this.frame);
     if (!this.paused) {
-      this.acc = Math.min(this.acc + (now - this.last) / 1000, 5 / TICK_RATE);
+      this.acc = Math.min(this.acc + ((now - this.last) / 1000) * (this.slowTicks > 0 ? 0.3 : 1), 5 / TICK_RATE);
       while (this.acc >= 1 / TICK_RATE) {
         this.acc -= 1 / TICK_RATE;
         this.tick();
@@ -141,6 +145,7 @@ export class FightEngine {
     const p2 = this.ai ? this.ai(sim) : this.opts.mode === 'versus' ? this.readInput(P2_KEYS, 1) : NO_INPUT;
     this.tapped.clear();
     sim.step([p1, p2]);
+    if (this.slowTicks > 0) this.slowTicks--;
     this.renderer.update(sim);
     this.renderer.consume(sim.events, sim);
     this.playSounds(sim.events);
@@ -207,6 +212,7 @@ export class FightEngine {
           break;
         case 'ko':
         case 'timeout':
+          if (e.type === 'ko') this.slowTicks = 36;
           gameAudio.playAnnouncerCall('ko');
           break;
         case 'matchEnd':

@@ -74,7 +74,7 @@ export function MatchModal({ type, mode, stageIdx, p1, p2, onResume, onRestart, 
   let tone = '';
   if (type === 'victory') {
     heading = story ? (last ? '¡Campeón de Mictlán!' : '¡Sombrero conquistado!') : `¡${hero.name} vence!`;
-    sub = story ? (last ? 'Huesos cae y las almas cruzan hacia la vida.' : `El siguiente sombrero espera: ${SOMBREROS[stageIdx + 1].name}.`) : 'Un combate para recordar en la Noche de Muertos.';
+    sub = story ? (last ? 'El Macho cae y los tres pétalos vuelven al portal.' : `El siguiente sombrero espera: ${SOMBREROS[stageIdx + 1].name}.`) : 'Un combate para recordar en la Noche de Muertos.';
   } else if (type === 'defeat') {
     heading = story ? '¡Has caído!' : `¡${rival.name} vence!`;
     sub = story ? 'Tu espíritu aún no se rinde. Levántate y vuelve a subir.' : 'Una revancha cura cualquier derrota.';
@@ -129,12 +129,12 @@ export function LoreModal({ onClose }: { onClose: () => void }) {
         </p>
         <ul className="b11 flex flex-col text-mist" style={{ gap: u(4) }}>
           <li><strong className="text-gold-hi">Nivel 1, El Gran Sombrero Dorado.</strong> Terciopelo negro y bordados de oro, vigilado por Ernesto en la plaza de las ofrendas.</li>
-          <li><strong className="text-marigold">Nivel 2, El Sombrero Agrietado.</strong> Los combates rasgan el fieltro y sueltan chispas en la tormenta de El Macho.</li>
-          <li><strong className="text-violet">Nivel 3, El Sombrero de Mictlán.</strong> Hecho pedazos flotantes y atado al abismo por cadenas espectrales: el reino de Huesos.</li>
+          <li><strong className="text-marigold">Nivel 2, El Sombrero Agrietado.</strong> Los combates rasgan el fieltro bajo la tormenta, y Huesos corta el aire con su guadaña.</li>
+          <li><strong className="text-violet">Nivel 3, El Sombrero de Mictlán.</strong> Hecho pedazos flotantes y atado al abismo por cadenas espectrales: el cuadrilátero de El Macho.</li>
         </ul>
         <p className="b11 text-mist">
           <strong className="text-violet">Ernesto, el Catrín Cantor,</strong> quiere cantar el último huapango a su bisnieta antes de que se apague la última veladora.{' '}
-          <strong className="text-rose">El Macho</strong> prometió llevar su cinturón de oro a los niños de su barrio.
+          <strong className="text-rose">El Macho</strong> roba un pétalo tras cada pelea y sabotea las arenas con barriles y yunques; solo el último combate es contra él en persona.
         </p>
       </div>
     </div>

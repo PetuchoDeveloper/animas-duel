@@ -6,7 +6,7 @@
 import { ATLAS, type AnimMeta, type Assets } from './assets';
 import { CHARACTER_COMBAT } from './moves';
 import { ROSTER, SOMBREROS, SUPER_NAMES } from './roster';
-import type { FighterState, GameMode, Sim, SimEvent, SimFighter, Slot } from './sim';
+import type { FighterState, GameMode, Sim, SimEvent, SimFighter, SimHazard, Slot } from './sim';
 
 export const W = 480;
 export const H = 270;
@@ -35,6 +35,13 @@ interface Particle {
   vy: number;
   phase: number;
   depth: 0 | 1;
+}
+
+interface Look {
+  x: number;
+  y: number;
+  zoom: number;
+  ticks: number;
 }
 
 interface Banner {
@@ -77,6 +84,16 @@ export class Renderer {
   private banner: Banner | null = null;
   private shake = 0;
   private flash = 0;
+  /** Camera: eases toward a target, `looks` are scripted close-ups, `punch` is a short zoom kick after a hit. */
+  private cam = { x: W / 2, y: H / 2, zoom: 1 };
+  private looks: Look[] = [];
+  private punch = 0;
+  private punchX = W / 2;
+  private view = { cx: W / 2, cy: H / 2, z: 1 };
+  /** Anime-style negative frames on the biggest hits. */
+  private impact: { age: number; life: number; x: number; y: number; dir: 1 | -1 } | null = null;
+  /** El Macho peeking in from the edge to throw something. */
+  private cameo: { x: number; y: number; flip: boolean; age: number } | null = null;
   private flashColor = '#ffffff';
   private bolt: { x: number; age: number } | null = null;
   private nextBolt = 240;
@@ -84,6 +101,8 @@ export class Renderer {
   private ghostHealth = [100, 100];
   private ghostHold = [0, 0];
   private tick = 0;
+  /** Players who ask their system for less motion get no negative flashes and gentler camera kicks. */
+  private calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   constructor(
     private ctx: CanvasRenderingContext2D,
@@ -116,6 +135,13 @@ export class Renderer {
         case 'roundStart': {
           const [a, b] = sim.fighters;
           const final = a.roundsWon === 1 && b.roundsWon === 1;
+          // the camera opens on the boss, then crosses to the hero before the bell
+          this.looks = [
+            { x: b.x, y: GROUND - 60, zoom: 1.55, ticks: 34 },
+            { x: a.x, y: GROUND - 60, zoom: 1.55, ticks: 26 },
+          ];
+          Object.assign(this.cam, this.looks[0]);
+          this.impact = null;
           this.banner = {
             text: final ? 'RONDA FINAL' : `RONDA ${e.round}`,
             sub: e.round === 1 ? SOMBREROS[this.stage].name : undefined,
@@ -125,6 +151,7 @@ export class Renderer {
         }
         case 'fight':
           this.banner = { text: '¡A LUCHAR!', age: 0, life: 50, color: '#ff5a4a' };
+          this.punch = 0.09;
           break;
         case 'hit': {
           const row = e.blocked ? 'sparkBlock' : e.move === 'super' ? 'sparkSuper' : e.move === 'heavy' || e.move === 'special' || e.move === 'projectile' ? 'sparkHeavy' : 'sparkLight';
@@ -132,6 +159,9 @@ export class Renderer {
           this.addFx(row, e.x, GROUND + e.y, att.facing === -1, row === 'sparkSuper' ? 3 : 2);
           this.shake = Math.max(this.shake, e.blocked ? 1 : e.move === 'super' ? 6 : e.knockdown ? 4 : 2);
           if (e.knockdown && !e.blocked) this.addFx('shock', sim.fighters[e.defender].x, GROUND + 4, false, 3);
+          this.punch = Math.max(this.punch, this.calm ? 0 : e.blocked ? 0.015 : e.move === 'super' ? 0.14 : e.knockdown ? 0.11 : e.move === 'heavy' || e.move === 'special' || e.move === 'projectile' ? 0.07 : 0.025);
+          this.punchX = e.x;
+          if (!this.calm && !e.blocked && (e.move === 'super' || e.move === 'special' || e.knockdown)) this.impact = { age: 0, life: e.move === 'super' ? 9 : 6, x: e.x, y: GROUND + e.y, dir: att.facing };
           break;
         }
         case 'jump':
@@ -145,11 +175,31 @@ export class Renderer {
           this.flash = 8;
           this.flashColor = '#ffffff';
           break;
-        case 'ko':
+        case 'ko': {
+          const loser = sim.fighters[e.slot];
+          this.looks = [{ x: loser.x, y: GROUND - 40, zoom: 1.6, ticks: 120 }];
+          if (!this.calm) this.impact = { age: 0, life: 12, x: loser.x, y: GROUND - 40, dir: sim.fighters[1 - e.slot].facing };
           this.banner = { text: '¡K.O.!', age: 0, life: 110, color: '#ff4a5a' };
           this.flash = 10;
           this.flashColor = '#ffffff';
           this.shake = 7;
+          break;
+        }
+        case 'hazardWarn':
+          // El Macho leans in from the side the barrel rolls from, or over the spot where the anvil will land
+          this.cameo = e.kind === 'barrel' ? { x: e.x < W / 2 ? 0 : W, y: GROUND - 72, flip: e.x >= W / 2, age: 0 } : { x: e.x, y: 0, flip: false, age: 0 };
+          if (!this.looks.length) this.looks = [{ x: e.x < 40 ? 150 : e.x > W - 40 ? W - 150 : e.x, y: GROUND - 70, zoom: 1.12, ticks: 40 }];
+          break;
+        case 'hazardLand':
+          this.shake = Math.max(this.shake, 6);
+          this.punch = Math.max(this.punch, 0.06);
+          this.addFx('dust', e.x - 10, GROUND - 14, false, 2);
+          this.addFx('dust', e.x + 10, GROUND - 14, true, 2);
+          break;
+        case 'hazardHit':
+          this.addFx(e.blocked ? 'sparkBlock' : 'sparkHeavy', e.x, GROUND + e.y, false, 2);
+          this.shake = Math.max(this.shake, e.blocked ? 2 : 5);
+          if (!this.calm && !e.blocked && e.kind === 'anvil') this.impact = { age: 0, life: 6, x: e.x, y: GROUND + e.y, dir: 1 };
           break;
         case 'timeout':
           this.banner = { text: '¡TIEMPO!', age: 0, life: 110, color: '#ffd856' };
@@ -169,7 +219,10 @@ export class Renderer {
     this.fx = [];
     this.ghosts = [[], []];
     this.banner = null;
-    this.shake = this.flash = 0;
+    this.shake = this.flash = this.punch = 0;
+    this.looks = [];
+    this.impact = this.cameo = null;
+    Object.assign(this.cam, { x: W / 2, y: H / 2, zoom: 1 });
     this.ghostHealth = [100, 100];
     this.ghostHold = [0, 0];
   }
@@ -184,6 +237,9 @@ export class Renderer {
     if (this.shake > 0) this.shake = Math.max(0, this.shake - 0.4);
     if (this.flash > 0) this.flash--;
     if (this.banner && ++this.banner.age > this.banner.life) this.banner = null;
+    if (this.impact && ++this.impact.age >= this.impact.life) this.impact = null;
+    if (this.cameo && ++this.cameo.age > 80) this.cameo = null;
+    this.updateCamera(sim);
     this.fx = this.fx.filter((f) => ++f.age < f.frames * f.hold);
 
     sim.fighters.forEach((f, i) => {
@@ -204,6 +260,24 @@ export class Renderer {
     });
 
     this.animate();
+  }
+
+  private updateCamera(sim: Sim): void {
+    if (this.looks[0] && --this.looks[0].ticks <= 0) this.looks.shift();
+    let t = { x: W / 2, y: H / 2, zoom: 1 };
+    if (sim.freeze > 0 && sim.superUser !== null) {
+      // a super: close on whoever is casting
+      const f = sim.fighters[sim.superUser];
+      t = { x: f.x + f.facing * 24, y: GROUND - 52, zoom: 1.4 };
+    } else if (this.looks[0]) t = this.looks[0];
+    else if (this.punch > 0.01) t.x = W / 2 + (this.punchX - W / 2) * 0.35;
+    const k = this.looks[0] ? 0.14 : 0.2;
+    this.cam.x += (t.x - this.cam.x) * k;
+    this.cam.y += (t.y - this.cam.y) * k;
+    this.cam.zoom += (t.zoom - this.cam.zoom) * k;
+    // settle exactly on the plain view so the pixels are crisp whenever nothing is happening
+    if (t.zoom === 1 && Math.abs(this.cam.zoom - 1) < 0.01) Object.assign(this.cam, { x: W / 2, y: H / 2, zoom: 1 });
+    this.punch = this.punch < 0.004 ? 0 : this.punch * 0.8;
   }
 
   /** Drifting scenery only (petals, embers, lightning); menus call this on their own. */
@@ -236,6 +310,15 @@ export class Renderer {
 
     const sh = Math.round(this.shake);
     if (sh > 0) ctx.translate(Math.round(rand(-sh, sh)), Math.round(rand(-sh, sh) * 0.6));
+    const z = this.cam.zoom + this.punch;
+    const cx = Math.max(W / (2 * z), Math.min(W - W / (2 * z), this.cam.x));
+    const cy = Math.max(H / (2 * z), Math.min(H - H / (2 * z), this.cam.y));
+    this.view = { cx, cy, z };
+    if (z > 1.002) {
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(z, z);
+      ctx.translate(-cx, -cy);
+    }
 
     ctx.drawImage(assets.stageBack[this.stage], 0, 0);
     this.drawBackFx();
@@ -246,12 +329,15 @@ export class Renderer {
     for (const f of order) this.drawFighter(f, sim);
     for (const f of order) this.drawSwing(f);
     for (const p of sim.projectiles) this.drawProjectile(p);
+    for (const h of sim.hazards) this.drawHazard(h);
     for (const fx of this.fx) this.drawFx(fx);
 
     ctx.drawImage(assets.stageFg[this.stage], 0, 0);
     this.drawFrontFx();
     ctx.restore();
 
+    if (this.impact) this.drawImpact();
+    this.drawCameo();
     if (sim.freeze > 0 && sim.superUser !== null) this.drawSuperCinematic(sim);
     this.drawHud(sim);
     this.drawBanner();
@@ -448,6 +534,95 @@ export class Renderer {
   private charIds: [string, string] = ['', ''];
   setCharacters(ids: [string, string]): void {
     this.charIds = ids;
+  }
+
+  /** A world point as it lands on the screen after the camera. */
+  private toScreen(x: number, y: number): [number, number] {
+    const { cx, cy, z } = this.view;
+    return [(x - cx) * z + W / 2, (y - cy) * z + H / 2];
+  }
+
+  /** Manga ink frames: the picture in hard black and white, then its negative, with speed lines and a slash. */
+  private drawImpact(): void {
+    const { ctx } = this;
+    const im = this.impact as NonNullable<Renderer['impact']>;
+    const negative = Math.floor(im.age / 2) % 2 === 1;
+    const [x, y] = this.toScreen(im.x, im.y);
+    ctx.save();
+    ctx.filter = `grayscale(1) contrast(3.2)${negative ? ' invert(1)' : ''}`;
+    ctx.drawImage(ctx.canvas, 0, 0);
+    ctx.restore();
+    ctx.strokeStyle = ctx.fillStyle = negative ? '#000000' : '#ffffff';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * Math.PI * 2 + ((i * 7919) % 13) * 0.012;
+      const r0 = 22 + ((i * 53) % 40);
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0 * 0.75);
+      ctx.lineTo(x + Math.cos(a) * 340, y + Math.sin(a) * 340 * 0.75);
+      ctx.stroke();
+    }
+    // one bold diagonal cut through the contact point, leaning the way the blow travelled
+    const d = im.dir;
+    ctx.beginPath();
+    ctx.moveTo(x - d * 90, y + 40);
+    ctx.lineTo(x + d * 96, y - 44);
+    ctx.lineTo(x + d * 100, y - 36);
+    ctx.lineTo(x - d * 84, y + 46);
+    ctx.fill();
+  }
+
+  /** El Macho's face sliding in from the screen edge with a laugh while his trap arrives. */
+  private drawCameo(): void {
+    const c = this.cameo;
+    if (!c) return;
+    const { ctx, assets } = this;
+    const { size, moods, order } = ATLAS.portraits;
+    const slide = Math.min(1, c.age / 8, (80 - c.age) / 8);
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    const fromTop = c.y === 0;
+    const px = fromTop ? Math.round(c.x - size / 2) : c.flip ? W - Math.round(size * slide) : Math.round(size * slide) - size;
+    const py = fromTop ? Math.round(size * slide) - size + 30 : c.y - size / 2;
+    ctx.translate(px + size / 2, py + size / 2);
+    if (c.flip) ctx.scale(-1, 1);
+    ctx.drawImage(assets.portraits, moods.indexOf('smug') * size, order.indexOf('elmacho') * size, size, size, -size / 2, -size / 2, size, size);
+    ctx.restore();
+    if (slide >= 1 && c.age % 20 < 10) this.text(c.age % 40 < 20 ? '¡JA JA JA!' : '¡TOMA!', px + size / 2, py + (fromTop ? size - 2 : -10), 8, '#ff5a4a', { align: 'center', outline: '#120a28' });
+  }
+
+  private drawHazard(h: SimHazard): void {
+    const { ctx, assets } = this;
+    const { barrel, anvil } = ATLAS.hazards;
+    if (h.kind === 'barrel') {
+      if (h.warn > 0) {
+        // a blinking arrow at the edge the barrel will come from
+        if (this.tick % 12 < 7) this.text(h.dir === 1 ? '!>' : '<!', h.dir === 1 ? 14 : W - 14, GROUND - 40, 10, '#ff5a4a', { align: 'center', outline: '#120a28' });
+        return;
+      }
+      const frame = Math.floor(Math.abs(h.x) / 5) % barrel.frames;
+      ctx.drawImage(assets.hazards, barrel.x + frame * barrel.w, barrel.y, barrel.w, barrel.h, Math.round(h.x) - barrel.w / 2, GROUND + Math.round(h.y) - barrel.h + 1, barrel.w, barrel.h);
+      return;
+    }
+    if (h.warn > 0) {
+      // the shadow on the floor grows as the anvil nears
+      const k = 1 - h.warn / 55;
+      const rx = Math.round(6 + k * 14);
+      ctx.fillStyle = `rgba(5, 2, 12, ${0.35 + k * 0.4})`;
+      for (let r = -2; r <= 2; r++) ctx.fillRect(Math.round(h.x) - Math.round(rx * Math.sqrt(1 - (r / 3) ** 2)), GROUND + 2 + r, Math.round(rx * Math.sqrt(1 - (r / 3) ** 2)) * 2, 1);
+      if (this.tick % 10 < 6) {
+        this.text('!', h.x, 56, 14, '#ff5a4a', { align: 'center', outline: '#120a28' });
+        ctx.fillStyle = '#ff5a4a';
+        ctx.fillRect(Math.round(h.x) - rx - 1, GROUND + 5, rx * 2 + 2, 1);
+      }
+      return;
+    }
+    const top = GROUND + Math.round(h.y) - anvil.h;
+    if (h.landed === 0) {
+      ctx.fillStyle = 'rgba(232, 221, 255, 0.45)';
+      for (const dx of [-9, 0, 9]) ctx.fillRect(Math.round(h.x) + dx, Math.max(0, top - 34), 1, 32);
+    }
+    ctx.drawImage(assets.hazards, anvil.x, anvil.y, anvil.w, anvil.h, Math.round(h.x) - anvil.w / 2, top, anvil.w, anvil.h);
   }
 
   private drawSwing(f: SimFighter): void {

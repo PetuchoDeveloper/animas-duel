@@ -88,7 +88,7 @@ export const ROSTER: Record<string, Fighter> = {
 
 /** Heroes the player may choose in story mode, and the boss waiting on each sombrero. */
 export const HEROES = ['bean', 'flea'];
-export const BOSSES = ['ernesto', 'elmacho', 'huesos'];
+export const BOSSES = ['ernesto', 'huesos', 'elmacho'];
 
 /** Name flashed during a super's cinematic. */
 export const SUPER_NAMES: Record<string, string> = {

@@ -8,17 +8,16 @@ import { CharacterSelect } from './components/CharacterSelect';
 import { DialogueScene } from './components/DialogueScene';
 import { FightCanvas } from './components/FightCanvas';
 import { LoreModal, MatchModal } from './components/MatchModal';
+import { MapScreen } from './components/MapScreen';
 import { SplashScreen } from './components/SplashScreen';
 import { TitleScreen } from './components/TitleScreen';
 import { gameAudio } from './game/audio';
 import { BOSSES, ROSTER, SOMBREROS } from './game/roster';
 import type { GameMode, Slot } from './game/sim';
-import { STORY_DATA, type DialogueLine } from './game/storyDialogues';
+import { storyScene, TROUBLE, type DialogueLine, type SceneId } from './game/storyDialogues';
 
-type Screen = 'splash' | 'title' | 'select' | 'dialogue' | 'battle' | 'epilogue';
+type Screen = 'splash' | 'title' | 'select' | 'map' | 'dialogue' | 'battle' | 'epilogue';
 type Result = 'victory' | 'defeat' | null;
-
-const INTROS = ['level1Intro', 'level2Intro', 'level3Intro'] as const;
 
 /**
  * Pixel art stays crisp only when each art pixel is a whole number of device pixels, so the 480x270
@@ -55,7 +54,7 @@ export default function App() {
   const [result, setResult] = useState<Result>(null);
   const [lore, setLore] = useState(false);
   const [muted, setMuted] = useState(gameAudio.getMuted());
-  const [scene, setScene] = useState<{ lines: DialogueLine[]; title: string }>({ lines: [], title: '' });
+  const [scene, setScene] = useState<{ lines: DialogueLine[]; title: string; done: () => void }>({ lines: [], title: '', done: () => {} });
 
   const toggleMute = useCallback(() => setMuted(gameAudio.toggleMute()), []);
 
@@ -76,20 +75,33 @@ export default function App() {
     setScreen('battle');
   };
 
-  const openStoryLevel = (hero: string, level: number) => {
+  const playScene = (id: SceneId, hero: string, title: string, done: () => void) => {
+    setScene({ lines: storyScene(id, hero), title, done });
+  };
+
+  /** The map before each sombrero: the hero walks to it, then the boss's introduction plays. */
+  const openMap = (level: number) => {
     setStage(level);
     setP2(BOSSES[level]);
-    setScene({
-      lines: STORY_DATA[hero][INTROS[level]],
-      title: `Nivel ${level + 1} · ${SOMBREROS[level].name} · Jefe: ${ROSTER[BOSSES[level]].name}`,
-    });
+    setScreen('map');
+  };
+
+  const openStoryLevel = (hero: string, level: number) => {
+    playScene(`level${level + 1}Intro` as SceneId, hero, `Nivel ${level + 1} · ${SOMBREROS[level].name} · Jefe: ${ROSTER[BOSSES[level]].name}`, startBattle);
+    setScreen('dialogue');
+  };
+
+  /** After a won sombrero: El Macho makes trouble, then the map shows the next one. */
+  const openOutro = (hero: string, level: number) => {
+    playScene(`level${level + 1}Outro` as SceneId, hero, `Nivel ${level + 1} · Jefe vencido`, () => openMap(level + 1));
+    setResult(null);
     setScreen('dialogue');
   };
 
   const onSelected = (a: string, b: string, s: number) => {
     setP1(a);
     if (mode === 'story') {
-      openStoryLevel(a, 0);
+      openMap(0);
     } else {
       setP2(b);
       setStage(s);
@@ -132,19 +144,15 @@ export default function App() {
 
         {screen === 'select' && <CharacterSelect mode={mode} onSelectComplete={onSelected} onBack={() => setScreen('title')} />}
 
+        {screen === 'map' && <MapScreen key={stage} hero={p1} level={stage} onGo={() => openStoryLevel(p1, stage)} onBack={toTitle} />}
+
         {(screen === 'dialogue' || screen === 'epilogue') && (
-          <DialogueScene
-            key={scene.title}
-            dialogues={scene.lines}
-            stage={stage}
-            title={scene.title}
-            onComplete={screen === 'epilogue' ? toTitle : startBattle}
-          />
+          <DialogueScene key={scene.title} dialogues={scene.lines} stage={stage} title={scene.title} onComplete={scene.done} />
         )}
 
         {screen === 'battle' && (
           <>
-            <FightCanvas key={matchId} p1={p1} p2={p2} stage={stage} mode={mode} paused={paused || result !== null} onMatchOver={onMatchOver} />
+            <FightCanvas key={matchId} p1={p1} p2={p2} stage={stage} mode={mode} trouble={mode === 'story' ? TROUBLE[stage] : null} paused={paused || result !== null} onMatchOver={onMatchOver} />
             {!result && !paused && (
               <button type="button" className="btn btn-quiet absolute" style={{ bottom: 'calc(var(--u) * 2)', left: '50%', transform: 'translateX(-50%)' }} onClick={() => setPaused(true)}>
                 Pausa <span className="keycap">Esc</span>
@@ -159,10 +167,10 @@ export default function App() {
                 p2={p2}
                 onResume={() => setPaused(false)}
                 onRestart={startBattle}
-                onNextStage={() => openStoryLevel(p1, stage + 1)}
+                onNextStage={() => openOutro(p1, stage)}
                 onEpilogue={() => {
                   setResult(null);
-                  setScene({ lines: STORY_DATA[p1].epilogue, title: 'Epílogo · El triunfo de las ánimas' });
+                  playScene('epilogue', p1, 'Epílogo · El triunfo de las ánimas', toTitle);
                   setScreen('epilogue');
                 }}
                 onQuit={toTitle}

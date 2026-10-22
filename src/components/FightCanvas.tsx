@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { loadAssets } from '../game/assets';
-import { FightEngine } from '../game/engine';
+import { FightEngine, type MatchOptions } from '../game/engine';
 import type { GameMode, Slot } from '../game/sim';
 import { TouchControls, hasTouch } from './TouchControls';
 import { u } from './ui';
@@ -15,11 +15,12 @@ interface FightCanvasProps {
   p2: string;
   stage: number;
   mode: GameMode;
+  trouble: MatchOptions['trouble'];
   paused: boolean;
   onMatchOver: (winner: Slot) => void;
 }
 
-export function FightCanvas({ p1, p2, stage, mode, paused, onMatchOver }: FightCanvasProps) {
+export function FightCanvas({ p1, p2, stage, mode, trouble, paused, onMatchOver }: FightCanvasProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const engine = useRef<FightEngine | null>(null);
   const latest = useRef({ paused, onMatchOver });
@@ -31,7 +32,7 @@ export function FightCanvas({ p1, p2, stage, mode, paused, onMatchOver }: FightC
     loadAssets()
       .then((assets) => {
         if (cancelled || !canvas.current) return;
-        const e = new FightEngine(canvas.current, assets, { p1, p2, stage, mode, onMatchOver: (w) => latest.current.onMatchOver(w) });
+        const e = new FightEngine(canvas.current, assets, { p1, p2, stage, mode, trouble, onMatchOver: (w) => latest.current.onMatchOver(w) });
         e.setPaused(latest.current.paused);
         e.start();
         engine.current = e;

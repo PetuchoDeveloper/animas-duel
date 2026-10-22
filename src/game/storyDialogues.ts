@@ -1,6 +1,7 @@
 /**
- * Story cutscenes: El Frijolito or La Pulguita climb the three sombreros against
- * Ernesto, El Macho and Huesos. Spanish lines with English subtitles.
+ * Story cutscenes: El Frijolito or La Pulguita climb the three sombreros against Ernesto, Huesos and,
+ * waiting at the top, El Macho, who steals a marigold petal after each fight and sabotages the arenas.
+ * Spanish lines with English subtitles; the hero's own lines differ per hero.
  */
 
 /** Which portrait expression to show; the speaker's name comes from the roster. */
@@ -13,175 +14,85 @@ export interface DialogueLine {
   englishSub: string;
 }
 
-export const STORY_DATA: Record<string, {
-  level1Intro: DialogueLine[];
-  level2Intro: DialogueLine[];
-  level3Intro: DialogueLine[];
-  epilogue: DialogueLine[];
-}> = {
-  bean: {
-    level1Intro: [
-      {
-        speakerId: 'bean',
-        mood: 'neutral',
-        spanishText: '¡Por los tamales de la abuela! El portal sagrado del Día de Muertos está en peligro.',
-        englishSub: 'By grandma’s sacred tamales! The Day of the Dead portal is in grave danger.',
-      },
-      {
-        speakerId: 'ernesto',
-        mood: 'neutral',
-        spanishText: '¡Un frijolito con capa! ¿Crees que puedes cruzar El Gran Sombrero Dorado sin afinar tus pasos?',
-        englishSub: 'A tiny bean with a cape! You think you can cross The Golden Sombrero without tuning your steps?',
-      },
-      {
-        speakerId: 'bean',
-        mood: 'shout',
-        spanishText: '¡Soy pequeño pero picoso, Don Mariachi! ¡Que suene la música y que vuelen los puños!',
-        englishSub: 'I am small but spicy, Don Mariachi! Let the music strike and the fists fly!',
-      },
-    ],
-    level2Intro: [
-      {
-        speakerId: 'elmacho',
-        mood: 'neutral',
-        spanishText: '¡JAJAJA! ¿Un frijol llegó al Sombrero Agrietado? ¡Aquí el suelo se parte bajo mis botas!',
-        englishSub: 'HAHAHA! A bean made it to The Cracked Sombrero? The floor splits under my boots here!',
-      },
-      {
-        speakerId: 'bean',
-        mood: 'shout',
-        spanishText: '¡Tu tamaño no me asusta, Macho! ¡La fuerza de mis ancestros cabe en esta pequeña vaina verde!',
-        englishSub: 'Your size does not scare me, Macho! The strength of my ancestors fits inside this green pod!',
-      },
-      {
-        speakerId: 'elmacho',
-        mood: 'smug',
-        spanishText: '¡A ver si esquivas mi lariat volcánico, pequeñín! ¡A DOS DE TRES CAÍDAS SIN LÍMITE!',
-        englishSub: 'Let us see if you can dodge my volcanic lariat, little one! TWO OUT OF THREE FALLS!',
-      },
-    ],
-    level3Intro: [
-      {
-        speakerId: 'huesos',
-        mood: 'neutral',
-        spanishText: '¿Cómo se atreve una simple semilla a pisar las ruinas de Mictlán? El sombrero está roto para siempre.',
-        englishSub: 'How dare a mere seed tread upon the ruins of Mictlán? The sombrero is shattered forever.',
-      },
-      {
-        speakerId: 'bean',
-        mood: 'shout',
-        spanishText: '¡Huesos! De las semillas rotas nacen los campos más verdes. ¡Romperé tus cadenas espectrales!',
-        englishSub: 'Huesos! From broken seeds sprout the greenest fields. I will shatter your spectral chains!',
-      },
-      {
-        speakerId: 'huesos',
-        mood: 'shout',
-        spanishText: '¡Silencio insolente! ¡Tu alma será cosechada en este Sombrero Destrozado!',
-        englishSub: 'Insolent silence! Your soul shall be reaped on this Shattered Sombrero!',
-      },
-    ],
-    epilogue: [
-      {
-        speakerId: 'bean',
-        mood: 'smug',
-        spanishText: '¡Las cadenas de Mictlán se rompieron en un estallido de pétalos dorados de cempasúchil!',
-        englishSub: 'The chains of Mictlán shattered in an explosion of golden marigold petals!',
-      },
-      {
-        speakerId: 'bean',
-        mood: 'smug',
-        spanishText: 'En todos los altares de México, las veladoras brillaron con una luz esmeralda y alegre.',
-        englishSub: 'Across all the altars in Mexico, the candles glowed with a joyful emerald warmth.',
-      },
-      {
-        speakerId: 'bean',
-        mood: 'neutral',
-        spanishText: '¡El Frijolito cumplió su misión! Las ánimas están en casa... ¡Que siga la gran fiesta!',
-        englishSub: 'El Frijolito fulfilled his quest! The spirits are home... let the grand fiesta continue!',
-      },
-    ],
-  },
+export type SceneId = 'level1Intro' | 'level1Outro' | 'level2Intro' | 'level2Outro' | 'level3Intro' | 'epilogue';
 
-  flea: {
-    level1Intro: [
-      {
-        speakerId: 'flea',
-        mood: 'neutral',
-        spanishText: '¡Vaya Sombrero tan elegante! Pero no tengo tiempo para admirar el terciopelo, debo subir.',
-        englishSub: 'What an elegant Sombrero! But I have no time to admire the velvet, I must climb up.',
-      },
-      {
-        speakerId: 'ernesto',
-        mood: 'neutral',
-        spanishText: '¡Una pulga brava en mi escenario! Veamos si puedes brincar al compás de mis notas de ultratumba.',
-        englishSub: 'A feisty flea on my stage! Let us see if you can leap to the tempo of my underworld chords.',
-      },
-      {
-        speakerId: 'flea',
-        mood: 'shout',
-        spanishText: '¡Mi salto derriba gigantes, Don Mariachi! ¡Guarda tu guitarra o te la rompo en la mandíbula!',
-        englishSub: 'My leap topples giants, Don Mariachi! Stash your guitar or I will snap it on your jaw!',
-      },
-    ],
-    level2Intro: [
-      {
-        speakerId: 'elmacho',
-        mood: 'neutral',
-        spanishText: '¡Una pulga que quiere luchar en el Sombrero Agrietado! ¡Te aplastaré con una sola mano!',
-        englishSub: 'A flea wanting to brawl on the Cracked Sombrero! I will crush you with one hand!',
-      },
-      {
-        speakerId: 'flea',
-        mood: 'shout',
-        spanishText: '¡Inténtalo, gigantón! ¡Soy más rápida que un relámpago en noche de muertos!',
-        englishSub: 'Just try it, big boy! I am faster than lightning on the Night of the Dead!',
-      },
-      {
-        speakerId: 'elmacho',
-        mood: 'shout',
-        spanishText: '¡Me gusta tu coraje, bicho! ¡A VER QUIÉN TIENE MÁS CORAZÓN EN EL RING!',
-        englishSub: 'I love your courage, little bug! LET US SEE WHO HAS MORE HEART IN THE RING!',
-      },
-    ],
-    level3Intro: [
-      {
-        speakerId: 'huesos',
-        mood: 'neutral',
-        spanishText: 'Un insecto que osa desafiar al Segador de Mictlán. Te pulverizaré en polvo de hueso.',
-        englishSub: 'An insect daring to defy the Reaper of Mictlán. I will pulverize you into bone dust.',
-      },
-      {
-        speakerId: 'flea',
-        mood: 'shout',
-        spanishText: '¡Podrás tener guadaña y fuego morado, pero no puedes picar a quien salta a la velocidad del sonido!',
-        englishSub: 'You may have a scythe and purple fire, but you cannot strike one who leaps at the speed of sound!',
-      },
-      {
-        speakerId: 'huesos',
-        mood: 'shout',
-        spanishText: '¡Este Sombrero Destrozado será tu fin! ¡MUERE EN LAS SOMBRAS!',
-        englishSub: 'This Shattered Sombrero shall be your end! PERISH IN THE SHADOWS!',
-      },
-    ],
-    epilogue: [
-      {
-        speakerId: 'flea',
-        mood: 'smug',
-        spanishText: '¡De un cabezazo meteórico, La Pulguita destrozó la guadaña de Huesos en mil chispas!',
-        englishSub: 'With a meteoric headbutt, La Pulguita shattered Huesos’ scythe into a thousand sparks!',
-      },
-      {
-        speakerId: 'flea',
-        mood: 'smug',
-        spanishText: 'El portal del cielo se abrió y un río de pan de muerto y cempasúchil cayó sobre las plazas.',
-        englishSub: 'The sky portal opened and a river of sweet bread and marigolds showered the plazas.',
-      },
-      {
-        speakerId: 'flea',
-        mood: 'neutral',
-        spanishText: '¡La Pulguita alzó sus puños en la cima del sombrero! ¡El campeón indiscutible de las ánimas!',
-        englishSub: 'La Pulguita raised both fists atop the sombrero! The undisputed champion of the souls!',
-      },
-    ],
-  },
+type Text = [es: string, en: string];
+type Raw = [speaker: string, mood: Mood, text: Text | Record<string, Text>];
+
+const SCENES: Record<SceneId, Raw[]> = {
+  level1Intro: [
+    ['hero', 'neutral', {
+      bean: ['¡Por los tamales de la abuela! Alguien robó los pétalos del portal sagrado del Día de Muertos.', 'By grandma’s sacred tamales! Someone stole the petals of the sacred Day of the Dead portal.'],
+      flea: ['¡Vaya Sombrero tan elegante! Pero no tengo tiempo para admirar el terciopelo, debo subir.', 'What an elegant sombrero! But I have no time to admire the velvet, I must climb.'],
+    }],
+    ['ernesto', 'smug', {
+      bean: ['¡Un frijolito con capa! ¿Crees que puedes cruzar El Gran Sombrero Dorado sin afinar tus pasos?', 'A tiny bean with a cape! You think you can cross The Golden Sombrero without tuning your steps?'],
+      flea: ['¡Una pulga brava en mi escenario! Veamos si puedes brincar al compás de mis notas de ultratumba.', 'A feisty flea on my stage! Let us see if you can hop to the beat of my notes from beyond the grave.'],
+    }],
+    ['hero', 'shout', {
+      bean: ['¡Soy pequeño pero picoso, Don Mariachi! ¡Que suene la música y que vuelen los puños!', 'I am small but spicy, Don Mariachi! Let the music strike and the fists fly!'],
+      flea: ['¡Mi salto derriba gigantes, Don Mariachi! ¡Guarda tu guitarra o te la rompo en la mandíbula!', 'My leap topples giants, Don Mariachi! Put away your guitar or I will break it on your jaw!'],
+    }],
+    ['elmacho', 'smug', ['¡JA, JA, JA! Sigue cantando, Ernesto. Yo me encargo de que esta fiesta tenga... barriles de sorpresa.', 'HA, HA, HA! Keep singing, Ernesto. I will make sure this party has... barrels of surprises.']],
+  ],
+  level1Outro: [
+    ['ernesto', 'hurt', ['Ay, mis cuerdas... El Macho me prometió el último huapango con mi bisnieta si te detenía. Me mintió.', 'Ay, my strings... El Macho promised me one last huapango with my great-granddaughter if I stopped you. He lied.']],
+    ['elmacho', 'smug', ['¡Gracias por ablandarlo! Este pétalo dorado ya es mío. ¡Qué ricas están las ofrendas ajenas!', 'Thanks for softening him up! This golden petal is mine now. How tasty other people’s offerings are!']],
+    ['hero', 'shout', {
+      bean: ['¡Macho! ¡Devuelve ese pétalo, o te lo saco a puñetazos!', 'Macho! Give that petal back, or I will punch it out of you!'],
+      flea: ['¡Macho! ¡Devuélvelo o te muerdo hasta que se te caiga la máscara!', 'Macho! Give it back or I will bite you until your mask falls off!'],
+    }],
+    ['elmacho', 'smug', ['¡Alcánzame en El Sombrero Agrietado, pequeñín! Te dejaré unos cuantos regalitos en el camino.', 'Catch me at The Cracked Sombrero, little one! I will leave a few little gifts for you along the way.']],
+  ],
+  level2Intro: [
+    ['huesos', 'neutral', ['El Macho me liberó de las cadenas a cambio de tu alma. Aquí arriba, hasta el cielo obedece a la guadaña.', 'El Macho freed me from my chains in exchange for your soul. Up here, even the sky obeys the scythe.']],
+    ['hero', 'shout', {
+      bean: ['¡Huesos! ¡Él te está usando! De las semillas rotas nacen los campos más verdes, y yo no me voy a romper!', 'Huesos! He is using you! The greenest fields grow from broken seeds, and I will not break!'],
+      flea: ['¡Podrás tener guadaña y fuego morado, pero no puedes picar a quien salta a la velocidad del sonido!', 'You may have a scythe and purple fire, but you cannot strike one who leaps at the speed of sound!'],
+    }],
+    ['huesos', 'shout', ['¡Silencio! ¡Tu alma será cosechada en este Sombrero Agrietado! ¡Que caiga el hierro!', 'Silence! Your soul shall be reaped on this Cracked Sombrero! Let the iron fall!']],
+    ['elmacho', 'smug', ['¡Yunques, yunques, yunques! Cuidado con el cielo, Huesos... ¡Ups! No me importa a quién le caigan!', 'Anvils, anvils, anvils! Watch the sky, Huesos... Oops! I do not care who they land on!']],
+  ],
+  level2Outro: [
+    ['huesos', 'hurt', ['Las almas... él las encadenó para obligarme a pelear. Lo siento, pequeño. Estaba cansado de las sombras.', 'The souls... he chained them to force me to fight. I am sorry, little one. I was tired of the shadows.']],
+    ['elmacho', 'smug', ['¡Qué bien, qué bien! Con este segundo pétalo solo me falta el último: ¡el que cuelga de MI cinturón de campeón!', 'Splendid, splendid! With this second petal I only need the last one: the one hanging from MY champion belt!']],
+    ['hero', 'shout', {
+      bean: ['¡Se acabó el juego, Macho! ¡Pequeño, pero con todas las ánimas detrás de mí!', 'The game is over, Macho! Small, but with every soul behind me!'],
+      flea: ['¡Se acabó, Macho! ¡Prepárate, porque ahora voy por tu cinturón y por tu máscara!', 'It is over, Macho! Get ready, because now I am going for your belt and your mask!'],
+    }],
+    ['elmacho', 'shout', ['¡Te espero en El Sombrero de Mictlán! ¡Ahí el cuadrilátero es mío y las reglas también!', 'I will be waiting at The Sombrero of Mictlán! The ring is mine there, and so are the rules!']],
+  ],
+  level3Intro: [
+    ['elmacho', 'smug', ['¡Damas y caballeros, ánimas y calacas! ¡En esta esquina, el campeón invicto de Mictlán... EL MACHO!', 'Ladies and gentlemen, spirits and skeletons! In this corner, the undefeated champion of Mictlán... EL MACHO!']],
+    ['hero', 'shout', {
+      bean: ['¡Tres sombreros, tres pétalos y un solo frijol! ¡La fuerza de mis ancestros cabe en esta pequeña vaina verde!', 'Three sombreros, three petals and a single bean! The strength of my ancestors fits inside this green pod!'],
+      flea: ['¡Soy más rápida que un relámpago en noche de muertos, gigantón! ¡Hoy te bajo del ring!', 'I am faster than lightning on the night of the dead, big guy! Today I knock you out of the ring!'],
+    }],
+    ['elmacho', 'shout', ['¡A DOS DE TRES CAÍDAS SIN LÍMITE! ¡Que tiemble el abismo y que suene mi música!', 'TWO OUT OF THREE FALLS, NO LIMIT! Let the abyss tremble and my music play!']],
+  ],
+  epilogue: [
+    ['hero', 'smug', {
+      bean: ['¡El Macho cayó y las cadenas de Mictlán se rompieron en un estallido de pétalos dorados de cempasúchil!', 'El Macho fell and the chains of Mictlán shattered in an explosion of golden marigold petals!'],
+      flea: ['¡De un cabezazo meteórico, La Pulguita mandó a El Macho fuera del ring en mil chispas!', 'With a meteoric headbutt, La Pulguita sent El Macho out of the ring in a thousand sparks!'],
+    }],
+    ['hero', 'smug', {
+      bean: ['Los tres pétalos volvieron al portal y, en todos los altares de México, las veladoras brillaron con luz alegre.', 'The three petals returned to the portal and, on every altar in Mexico, the candles glowed with joyful light.'],
+      flea: ['El portal del cielo se abrió y un río de pan de muerto y cempasúchil cayó sobre las plazas.', 'The sky portal opened and a river of sweet bread and marigolds showered the plazas.'],
+    }],
+    ['hero', 'neutral', {
+      bean: ['¡El Frijolito cumplió su misión! Las ánimas están en casa... ¡Que siga la gran fiesta!', 'El Frijolito fulfilled his quest! The spirits are home... let the grand fiesta continue!'],
+      flea: ['¡La Pulguita alzó sus puños en la cima del sombrero! ¡La campeona indiscutible de las ánimas!', 'La Pulguita raised both fists atop the sombrero! The undisputed champion of the souls!'],
+    }],
+  ],
 };
+
+/** The lines of one cutscene for the chosen hero. */
+export function storyScene(id: SceneId, hero: string): DialogueLine[] {
+  return SCENES[id].map(([who, mood, text]) => {
+    const [spanishText, englishSub] = Array.isArray(text) ? text : text[hero];
+    return { speakerId: who === 'hero' ? hero : who, mood, spanishText, englishSub };
+  });
+}
+
+/** The trouble El Macho causes on each sombrero while the hero fights its boss; the last has none because he is the boss. */
+export const TROUBLE: ('barrels' | 'anvils' | null)[] = ['barrels', 'anvils', null];

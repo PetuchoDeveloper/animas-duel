@@ -9,6 +9,8 @@ import { packEffects } from './fx.mjs';
 import { solve2 } from './lib/kof.mjs';
 import { STAGES } from './stages.mjs';
 import { writeUi } from './ui.mjs';
+import { paintMap, NODES, ROAD, NODE_AT, HAT } from './map.mjs';
+import { paintHazards, BARREL, ANVIL } from './hazards.mjs';
 
 const OUT = resolve('src/assets/sprites');
 const IDS = ['bean', 'flea', 'ernesto', 'elmacho', 'huesos'];
@@ -43,6 +45,10 @@ writePng(resolve(OUT, 'portraits.png'), sheet);
 const fx = packEffects();
 writePng(resolve(OUT, 'fx.png'), fx.sheet);
 atlas.fx = fx.meta;
+const map = paintMap();
+atlas.map = { nodes: NODES, road: ROAD, nodeAt: NODE_AT, hat: HAT };
+writePng(resolve(OUT, 'hazards.png'), paintHazards());
+atlas.hazards = { barrel: { x: 0, y: 0, ...BARREL }, anvil: { x: BARREL.w * BARREL.frames, y: 0, ...ANVIL } };
 writeFileSync(resolve('src/game/atlas.json'), JSON.stringify(atlas, null, 1) + '\n');
 
 const STAGE_OUT = resolve('src/assets/stages');
@@ -56,3 +62,7 @@ STAGES.forEach((paint, i) => {
 const UI_OUT = resolve('src/assets/ui');
 mkdirSync(UI_OUT, { recursive: true });
 writeUi(UI_OUT);
+writePng(resolve(UI_OUT, 'map.png'), map.back);
+writePng(resolve(UI_OUT, 'map-hats.png'), map.hats);
+writePng(resolve(UI_OUT, 'map-icons.png'), map.icons);
+
