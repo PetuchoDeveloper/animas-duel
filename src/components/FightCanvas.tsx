@@ -1,110 +1,57 @@
 /**
- * Mounts the isolated HTML5 Canvas and binds the FightEngine.
- * Decoupled from React reconciliation loop to guarantee 60fps performance.
+ * Mounts the battle canvas and owns the engine's lifetime. Pausing is a flag, never a teardown,
+ * so a paused round resumes exactly where it stopped.
  */
 
-import React, { useEffect, useRef } from 'react';
-import { FightEngine, GameMode } from '../game/engine';
+import { useEffect, useRef, useState } from 'react';
+import { loadAssets } from '../game/assets';
+import { FightEngine } from '../game/engine';
+import type { GameMode, Slot } from '../game/sim';
+import { u } from './ui';
 
 interface FightCanvasProps {
-  p1CharId: string;
-  p2CharId: string;
-  stageIdx: number;
+  p1: string;
+  p2: string;
+  stage: number;
   mode: GameMode;
-  onHUDUpdate: (data: {
-    p1Hp: number;
-    p1GhostHp: number;
-    p1Meter: number;
-    p1Rounds: number;
-    p2Hp: number;
-    p2GhostHp: number;
-    p2Meter: number;
-    p2Rounds: number;
-    timer: number;
-    comboP1: number;
-    comboP2: number;
-    matchState: string;
-  }) => void;
-  onMatchFinished: (winner: 'P1' | 'P2') => void;
-  isPaused: boolean;
+  paused: boolean;
+  onMatchOver: (winner: Slot) => void;
 }
 
-export const FightCanvas: React.FC<FightCanvasProps> = ({
-  p1CharId,
-  p2CharId,
-  stageIdx,
-  mode,
-  onHUDUpdate,
-  onMatchFinished,
-  isPaused,
-}) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const engineRef = useRef<FightEngine | null>(null);
-  const hudIntervalRef = useRef<number | null>(null);
+export function FightCanvas({ p1, p2, stage, mode, paused, onMatchOver }: FightCanvasProps) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const engine = useRef<FightEngine | null>(null);
+  const latest = useRef({ paused, onMatchOver });
+  latest.current = { paused, onMatchOver };
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    // Fixed virtual resolution 960x540 for classic arcade 16:9 pixel crispness
-    canvas.width = 960;
-    canvas.height = 540;
-
-    const engine = new FightEngine(canvas);
-    engineRef.current = engine;
-
-    engine.initMatch(p1CharId, p2CharId, stageIdx, mode);
-    engine.onMatchOver = (winner) => {
-      onMatchFinished(winner);
-    };
-
-    engine.start();
-
-    // Throttled HUD update for React state (15Hz is plenty for HUD without bogging 60fps sim)
-    hudIntervalRef.current = window.setInterval(() => {
-      if (!engineRef.current) return;
-      const eng = engineRef.current;
-      onHUDUpdate({
-        p1Hp: Math.round(eng.p1?.health || 0),
-        p1GhostHp: Math.round(eng.p1?.ghostHealth || 0),
-        p1Meter: Math.round(eng.p1?.meter || 0),
-        p1Rounds: eng.p1?.roundsWon || 0,
-        p2Hp: Math.round(eng.p2?.health || 0),
-        p2GhostHp: Math.round(eng.p2?.ghostHealth || 0),
-        p2Meter: Math.round(eng.p2?.meter || 0),
-        p2Rounds: eng.p2?.roundsWon || 0,
-        timer: Math.ceil(eng.roundTimer),
-        comboP1: eng.comboP1,
-        comboP2: eng.comboP2,
-        matchState: eng.matchState,
-      });
-    }, 66);
-
+    let cancelled = false;
+    loadAssets()
+      .then((assets) => {
+        if (cancelled || !canvas.current) return;
+        const e = new FightEngine(canvas.current, assets, { p1, p2, stage, mode, onMatchOver: (w) => latest.current.onMatchOver(w) });
+        e.setPaused(latest.current.paused);
+        e.start();
+        engine.current = e;
+        if (import.meta.env.DEV) (window as unknown as { __engine?: FightEngine }).__engine = e;
+      })
+      .catch((err: Error) => setError(err.message));
     return () => {
-      if (hudIntervalRef.current !== null) {
-        clearInterval(hudIntervalRef.current);
-      }
-      engine.stop();
+      cancelled = true;
+      engine.current?.destroy();
+      engine.current = null;
     };
-  }, [p1CharId, p2CharId, stageIdx, mode]);
+  }, [p1, p2, stage, mode]);
 
   useEffect(() => {
-    if (!engineRef.current) return;
-    if (isPaused) {
-      engineRef.current.stop();
-    } else {
-      engineRef.current.start();
-    }
-  }, [isPaused]);
+    engine.current?.setPaused(paused);
+  }, [paused]);
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden select-none">
-      <canvas
-        ref={canvasRef}
-        data-testid="fight-canvas"
-        className="w-full h-full max-w-[1280px] max-h-[720px] object-contain shadow-2xl"
-        style={{ imageRendering: 'pixelated' }}
-      />
+    <div className="layer bg-ink select-none">
+      <canvas ref={canvas} data-testid="fight-canvas" className="block h-full w-full" />
+      {error && <p className="font-pixel t8 absolute inset-0 flex items-center justify-center text-rose" style={{ padding: u(20) }}>{error}</p>}
     </div>
   );
-};
+}

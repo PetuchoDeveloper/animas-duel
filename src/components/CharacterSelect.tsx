@@ -1,319 +1,212 @@
 /**
- * TKOF-inspired Character Select Screen with animated portrait cards,
- * stat meters, and stage select for Local Multiplayer.
- * Main heroes: El Frijolito (The Bean) and La Pulguita (The Flea).
+ * Fighter and stage selection. Arrow keys move the cursor, Enter confirms, Esc steps back.
+ * Story mode offers the two heroes; versus and practice offer everyone.
  */
 
-import React, { useState } from 'react';
-import { CHARACTER_ROSTER, CharacterSpriteConfig } from '../game/spriteData';
-import { SOMBRERO_STAGES } from '../game/combatRules';
+import { useEffect, useState } from 'react';
+import { url } from '../game/assets';
 import { gameAudio } from '../game/audio';
-import { GameMode } from '../game/engine';
+import { SOMBRERO_STAGES } from '../game/combatRules';
+import { BOSSES, HEROES, ROSTER, type Fighter } from '../game/roster';
+import type { GameMode } from '../game/sim';
+import { ControlsList } from './MatchModal';
+import { Pips, Portrait, Backdrop, u } from './ui';
 
 interface CharacterSelectProps {
   mode: GameMode;
-  onSelectComplete: (p1Id: string, p2Id: string, stageIdx: number) => void;
+  onSelectComplete: (p1: string, p2: string, stageIdx: number) => void;
   onBack: () => void;
 }
 
-export const CharacterSelect: React.FC<CharacterSelectProps> = ({
-  mode,
-  onSelectComplete,
-  onBack,
-}) => {
-  const rosterList = Object.values(CHARACTER_ROSTER);
+type Step = 'p1' | 'p2' | 'stage';
 
-  // In Story mode, player chooses between the 2 heroes: El Frijolito (The Bean) or La Pulguita (The Flea)
-  const playableList = mode === 'story'
-    ? rosterList.filter((c) => c.id === 'bean' || c.id === 'flea')
-    : rosterList;
+export function CharacterSelect({ mode, onSelectComplete, onBack }: CharacterSelectProps) {
+  const ids = mode === 'story' ? HEROES : Object.keys(ROSTER);
+  const [step, setStep] = useState<Step>('p1');
+  const [cursor, setCursor] = useState(0);
+  const [picks, setPicks] = useState<{ p1: string; p2: string }>({ p1: ids[0], p2: ids[ids.length > 1 ? 1 : 0] });
+  const [stage, setStage] = useState(0);
+  const versus = mode !== 'story';
 
-  const [p1SelectedId, setP1SelectedId] = useState<string>('bean');
-  const [p2SelectedId, setP2SelectedId] = useState<string>(mode === 'story' ? 'ernesto' : 'flea');
-  const [selectedStageIdx, setSelectedStageIdx] = useState<number>(0);
-  const [activePickingPlayer, setActivePickingPlayer] = useState<'p1' | 'p2' | 'stage'>('p1');
+  const cursorId = ids[cursor];
+  const shown = {
+    p1: step === 'p1' ? cursorId : picks.p1,
+    p2: !versus ? BOSSES[0] : step === 'p2' ? cursorId : picks.p2,
+  };
 
-  const p1Char = CHARACTER_ROSTER[p1SelectedId] || CHARACTER_ROSTER.bean;
-  const p2Char = CHARACTER_ROSTER[p2SelectedId] || CHARACTER_ROSTER.ernesto;
-
-  const handlePickFighter = (fighter: CharacterSpriteConfig) => {
+  const confirm = () => {
     gameAudio.playGuitarChord('A_minor');
-    if (activePickingPlayer === 'p1') {
-      setP1SelectedId(fighter.id);
-      if (mode === 'versus') {
-        setActivePickingPlayer('p2');
-      } else {
-        // Story mode Level 1 Boss is Ernesto!
-        setP2SelectedId('ernesto');
-        onSelectComplete(fighter.id, 'ernesto', 0);
+    if (step === 'p1') {
+      if (!versus) {
+        onSelectComplete(cursorId, BOSSES[0], 0);
+        return;
       }
-    } else if (activePickingPlayer === 'p2') {
-      setP2SelectedId(fighter.id);
-      setActivePickingPlayer('stage');
+      setPicks((p) => ({ ...p, p1: cursorId }));
+      setCursor(ids.indexOf(picks.p2));
+      setStep('p2');
+    } else if (step === 'p2') {
+      setPicks((p) => ({ ...p, p2: cursorId }));
+      setCursor(stage);
+      setStep('stage');
+    } else {
+      gameAudio.playGuitarChord('E_major');
+      onSelectComplete(picks.p1, picks.p2, stage);
     }
   };
 
-  const handleConfirmVersus = () => {
-    gameAudio.playGuitarChord('E_major');
-    onSelectComplete(p1SelectedId, p2SelectedId, selectedStageIdx);
+  const back = () => {
+    if (step === 'stage') {
+      setCursor(ids.indexOf(picks.p2));
+      setStep('p2');
+    } else if (step === 'p2') {
+      setCursor(ids.indexOf(picks.p1));
+      setStep('p1');
+    } else onBack();
   };
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const moves = e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'KeyA' || e.code === 'KeyD';
+      if (e.repeat && !moves) return;
+      const count = step === 'stage' ? SOMBRERO_STAGES.length : ids.length;
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') setCursor((c) => (c + count - 1) % count);
+      else if (e.code === 'ArrowRight' || e.code === 'KeyD') setCursor((c) => (c + 1) % count);
+      else if (e.code === 'Enter' || e.code === 'Space') confirm();
+      else if (e.code === 'Escape' || e.code === 'Backspace') back();
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  useEffect(() => {
+    if (step === 'stage') setStage(cursor);
+  }, [cursor, step]);
+
+  const heading = step === 'p1' ? (versus ? 'Jugador 1: elige luchador' : 'Elige a tu héroe') : step === 'p2' ? 'Jugador 2: elige luchador' : 'Elige el sombrero';
+
   return (
-    <div className="relative w-full h-full min-h-screen flex flex-col justify-between items-center bg-gradient-to-b from-[#090214] via-[#150522] to-[#25081c] text-white p-4 sm:p-8 select-none overflow-y-auto">
-      {/* Header */}
-      <div className="w-full max-w-5xl flex items-center justify-between z-10 mb-4">
-        <button
-          type="button"
-          onClick={onBack}
-          className="px-4 py-2 rounded bg-black/60 border border-amber-500/40 hover:border-amber-400 text-amber-300 font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
-        >
-          ← VOLVER AL MENÚ
+    <div className="layer select-none">
+      <Backdrop stage={step === 'stage' ? stage : 0} dim={0.72} />
+
+      <div className="absolute flex items-center justify-between" style={{ top: u(8), left: u(12), right: u(12) }}>
+        <button type="button" className="btn btn-quiet" onClick={back}>
+          Volver <span className="keycap">Esc</span>
         </button>
-
-        <h2 className="text-xl sm:text-3xl font-black uppercase tracking-wider text-amber-300 drop-shadow">
-          {mode === 'story' ? 'ELIGE TU HÉROE: EL FRIJOL O LA PULGA' : 'SELECCIÓN DE LUCHADORES'}
-        </h2>
-
-        <span className="text-xs text-purple-300 font-mono uppercase">
-          {mode === 'story' ? 'MODO HISTORIA' : activePickingPlayer === 'p1' ? 'P1 ELIGE' : activePickingPlayer === 'p2' ? 'P2 ELIGE' : 'ELIGE SOMBRERO'}
-        </span>
+        <h2 className="font-pixel t8 text-gold-hi shadow-text">{heading}</h2>
+        <span style={{ width: u(60) }} />
       </div>
 
-      {/* Main Grid: Player 1 Card | Roster Grid | Player 2 Card */}
-      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-6 items-center my-auto z-10">
-        {/* P1 Hero Preview Card */}
-        <div
-          className="flex flex-col items-center p-4 rounded-xl border-2 bg-gradient-to-b from-stone-900/90 to-black/90 shadow-2xl relative"
-          style={{ borderColor: p1Char.accentColor }}
-        >
-          <span className="absolute -top-3 left-4 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-400 text-black">
-            JUGADOR 1
-          </span>
-
-          <div className="w-32 h-32 rounded-lg overflow-hidden border border-amber-500/50 bg-black flex items-center justify-center mb-3">
-            <img
-              src={p1Char.spritesheetPath}
-              alt={p1Char.name}
-              className="w-full h-full object-cover scale-150"
-              style={{ objectPosition: p1Char.id === 'bean' ? '5% 92%' : p1Char.id === 'flea' ? '55% 92%' : '10% 90%' }}
-            />
-          </div>
-
-          <h3 className="text-xl font-black uppercase tracking-wider" style={{ color: p1Char.accentColor }}>
-            {p1Char.name}
-          </h3>
-          <p className="text-xs text-amber-200/80 font-bold uppercase tracking-widest mb-3">
-            {p1Char.title}
-          </p>
-
-          <div className="w-full space-y-1.5 text-xs font-bold text-stone-300">
-            <div className="flex justify-between items-center">
-              <span>PODER:</span>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <div
-                    key={s}
-                    className={`w-4 h-2 rounded-sm ${s <= p1Char.power ? 'bg-amber-400' : 'bg-stone-800'}`}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span>VELOCIDAD:</span>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <div
-                    key={s}
-                    className={`w-4 h-2 rounded-sm ${s <= p1Char.speed ? 'bg-amber-400' : 'bg-stone-800'}`}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span>DEFENSA:</span>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <div
-                    key={s}
-                    className={`w-4 h-2 rounded-sm ${s <= p1Char.defense ? 'bg-amber-400' : 'bg-stone-800'}`}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="text-[11px] text-amber-300/80 mt-2 text-center">
-              ESTILO: {p1Char.style} · ALCANCE: {p1Char.reach}
-            </div>
-          </div>
-        </div>
-
-        {/* Center: Roster Selection Grid */}
-        <div className="flex flex-col items-center">
-          <p className="text-xs text-amber-200/90 font-bold tracking-widest uppercase mb-3 text-center">
-            {activePickingPlayer === 'stage'
-              ? 'SELECCIONA EL SOMBRERO DE COMBATE'
-              : mode === 'story'
-              ? 'SELECCIONA A TU HÉROE'
-              : `SELECCIONA LUCHADOR (${activePickingPlayer === 'p1' ? 'P1' : 'P2'})`}
-          </p>
-
-          {activePickingPlayer !== 'stage' ? (
-            <div className={`grid ${mode === 'story' ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'} gap-3 w-full`}>
-              {playableList.map((fighter) => {
-                const isP1Selected = p1SelectedId === fighter.id;
-                const isP2Selected = p2SelectedId === fighter.id;
-                return (
-                  <button
-                    key={fighter.id}
-                    type="button"
-                    onClick={() => handlePickFighter(fighter)}
-                    className={`p-3 rounded-lg border-2 flex flex-col items-center gap-2 transition-all cursor-pointer relative ${
-                      isP1Selected
-                        ? 'border-amber-400 bg-amber-950/40 shadow-[0_0_15px_rgba(245,158,11,0.6)] scale-105'
-                        : isP2Selected && mode === 'versus'
-                        ? 'border-rose-400 bg-rose-950/40 shadow-[0_0_15px_rgba(244,63,94,0.6)]'
-                        : 'border-stone-800 bg-black/60 hover:border-amber-500/60'
-                    }`}
-                  >
-                    {isP1Selected && (
-                      <span className="absolute -top-2 -left-2 bg-amber-400 text-black text-[9px] font-black px-1.5 py-0.5 rounded">
-                        P1
-                      </span>
-                    )}
-                    {isP2Selected && mode === 'versus' && (
-                      <span className="absolute -top-2 -right-2 bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded">
-                        P2
-                      </span>
-                    )}
-
-                    <div className="w-16 h-16 rounded overflow-hidden bg-stone-900 border border-stone-700">
-                      <img
-                        src={fighter.spritesheetPath}
-                        alt={fighter.name}
-                        className="w-full h-full object-cover scale-150"
-                        style={{
-                          objectPosition:
-                            fighter.id === 'bean' ? '5% 92%' : fighter.id === 'flea' ? '55% 92%' : '10% 90%',
-                        }}
-                      />
-                    </div>
-                    <span className="font-black text-xs uppercase tracking-wide text-white">
-                      {fighter.name}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            // Stage Selection for Versus Mode
-            <div className="w-full space-y-2">
-              {SOMBRERO_STAGES.map((stg, idx) => (
+      <div className="absolute flex items-start justify-between" style={{ top: u(34), left: u(10), right: u(10) }}>
+        <FighterCard id={shown.p1} tag={versus ? '1P' : 'Héroe'} tone="gold" />
+        <div className="flex flex-col items-center" style={{ gap: u(6), width: u(170) }}>
+          {step !== 'stage' ? (
+            <div className="flex" style={{ gap: u(5) }}>
+              {ids.map((id, i) => (
                 <button
-                  key={stg.level}
+                  key={id}
                   type="button"
+                  aria-label={ROSTER[id].name}
+                  onMouseEnter={() => setCursor(i)}
                   onClick={() => {
-                    setSelectedStageIdx(idx);
-                    gameAudio.playGuitarChord('G_major');
+                    setCursor(i);
+                    confirm();
                   }}
-                  className={`w-full p-2.5 rounded-lg border-2 text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
-                    selectedStageIdx === idx
-                      ? 'border-amber-400 bg-amber-950/60 shadow-[0_0_15px_rgba(245,158,11,0.5)]'
-                      : 'border-stone-800 bg-black/60 hover:border-amber-500/50'
-                  }`}
+                  className="relative block"
+                  style={{
+                    padding: u(2),
+                    background: i === cursor ? (step === 'p2' ? 'var(--color-rose)' : 'var(--color-gold)') : 'var(--color-grape)',
+                    cursor: 'pointer',
+                    boxShadow: `0 0 0 ${u(1.5)} var(--color-ink)`,
+                  }}
                 >
-                  <span className="font-black text-xs uppercase" style={{ color: stg.themeHue }}>
-                    {stg.spanishTitle}
-                  </span>
-                  <span className="text-[10px] text-stone-300 line-clamp-1">{stg.description}</span>
+                  <div style={{ background: 'var(--color-night)', overflow: 'hidden', width: u(30), height: u(30) }}>
+                    <div style={{ marginLeft: u(-17), marginTop: u(-8) }}>
+                      <Portrait id={id} />
+                    </div>
+                  </div>
+                  {picks.p1 === id && step === 'p2' && <Tag text="1P" color="var(--color-gold)" corner="left" />}
                 </button>
               ))}
-
-              <button
-                type="button"
-                data-start="true"
-                onClick={handleConfirmVersus}
-                className="w-full mt-3 py-3 rounded bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-black font-black text-sm uppercase tracking-wider shadow-lg transition-transform hover:scale-102 active:scale-95 cursor-pointer"
-              >
-                ¡CONFIRMAR DUELO Y PELEAR!
-              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col" style={{ gap: u(4), width: '100%' }}>
+              {SOMBRERO_STAGES.map((s, i) => (
+                <button
+                  key={s.level}
+                  type="button"
+                  onMouseEnter={() => setCursor(i)}
+                  onClick={() => {
+                    setCursor(i);
+                    confirm();
+                  }}
+                  className="flex items-center text-left"
+                  style={{
+                    gap: u(5),
+                    padding: u(3),
+                    background: i === stage ? 'var(--color-gold)' : 'var(--color-grape)',
+                    color: i === stage ? 'var(--color-ink)' : 'var(--color-bone)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <img src={url(`stages/stage${i + 1}-back.png`)} alt="" style={{ width: u(48), height: u(27) }} />
+                  <span className="flex flex-col" style={{ gap: u(2) }}>
+                    <span className="font-pixel t6">Nivel {s.level}</span>
+                    <span className="b9">{s.name}</span>
+                  </span>
+                </button>
+              ))}
             </div>
           )}
-        </div>
-
-        {/* P2 Hero Preview Card */}
-        <div
-          className="flex flex-col items-center p-4 rounded-xl border-2 bg-gradient-to-b from-stone-900/90 to-black/90 shadow-2xl relative"
-          style={{ borderColor: p2Char.accentColor }}
-        >
-          <span className="absolute -top-3 right-4 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-500 text-white">
-            {mode === 'story' ? 'JEFE NIVEL 1' : 'JUGADOR 2'}
-          </span>
-
-          <div className="w-32 h-32 rounded-lg overflow-hidden border border-rose-500/50 bg-black flex items-center justify-center mb-3">
-            <img
-              src={p2Char.spritesheetPath}
-              alt={p2Char.name}
-              className="w-full h-full object-cover scale-150"
-              style={{
-                objectPosition:
-                  p2Char.id === 'bean' ? '5% 92%' : p2Char.id === 'flea' ? '55% 92%' : '10% 90%',
-              }}
-            />
-          </div>
-
-          <h3 className="text-xl font-black uppercase tracking-wider" style={{ color: p2Char.accentColor }}>
-            {p2Char.name}
-          </h3>
-          <p className="text-xs text-rose-200/80 font-bold uppercase tracking-widest mb-3">
-            {p2Char.title}
+          <p className="b9 text-center text-mist shadow-text" style={{ minHeight: u(24) }}>
+            {step === 'stage' ? SOMBRERO_STAGES[stage].description : <>El mismo teclado para dos: {mode === 'training' ? 'el rival se queda quieto.' : 'cada quien con sus teclas.'}</>}
           </p>
-
-          <div className="w-full space-y-1.5 text-xs font-bold text-stone-300">
-            <div className="flex justify-between items-center">
-              <span>PODER:</span>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <div
-                    key={s}
-                    className={`w-4 h-2 rounded-sm ${s <= p2Char.power ? 'bg-rose-400' : 'bg-stone-800'}`}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span>VELOCIDAD:</span>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <div
-                    key={s}
-                    className={`w-4 h-2 rounded-sm ${s <= p2Char.speed ? 'bg-rose-400' : 'bg-stone-800'}`}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span>DEFENSA:</span>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <div
-                    key={s}
-                    className={`w-4 h-2 rounded-sm ${s <= p2Char.defense ? 'bg-rose-400' : 'bg-stone-800'}`}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="text-[11px] text-rose-300/80 mt-2 text-center">
-              ESTILO: {p2Char.style} · ALCANCE: {p2Char.reach}
-            </div>
-          </div>
         </div>
+        <FighterCard id={shown.p2} tag={versus ? '2P' : 'Jefe nivel 1'} tone="rose" />
       </div>
 
-      {/* Control Hint Footer */}
-      <div className="text-xs text-amber-200/60 font-medium tracking-wide text-center mt-4">
-        {mode === 'story'
-          ? 'El Frijolito y La Pulguita son los héroes que ascenderán los 3 Sombreros contra Ernesto, El Macho y Huesos.'
-          : 'P1 usa WASD + F/G/H/V · P2 usa Flechas + U/I/O/P'}
+      <div className="absolute inset-x-0 flex justify-center" style={{ bottom: u(8) }}>
+        {step === 'stage' ? (
+          <button type="button" className="btn btn-rose" onClick={confirm} style={{ width: u(120) }}>
+            ¡A pelear! <span className="keycap">Enter</span>
+          </button>
+        ) : (
+          <div className="b9 text-mist shadow-text">
+            <ControlsList compact mode={mode} />
+          </div>
+        )}
       </div>
     </div>
   );
-};
+}
+
+function Tag({ text, color, corner }: { text: string; color: string; corner: 'left' | 'right' }) {
+  return (
+    <span className="font-pixel t6 absolute text-ink" style={{ top: u(-5), [corner]: u(-3), background: color, padding: `${u(1)} ${u(2)}` }}>
+      {text}
+    </span>
+  );
+}
+
+function FighterCard({ id, tag, tone }: { id: string; tag: string; tone: 'gold' | 'rose' }) {
+  const f: Fighter = ROSTER[id];
+  return (
+    <div className={`panel ${tone === 'rose' ? 'panel-rose' : ''} flex flex-col items-center`} style={{ width: u(122), padding: u(6), gap: u(4) }}>
+      <span className="font-pixel t6 absolute text-ink" style={{ top: u(-6), left: u(6), background: tone === 'rose' ? 'var(--color-rose)' : 'var(--color-gold)', padding: `${u(1)} ${u(3)}` }}>
+        {tag}
+      </span>
+      <div style={{ background: 'var(--color-night)', boxShadow: `0 0 0 ${u(1.5)} var(--color-grape)` }}>
+        <Portrait id={id} scale={1.5} flip={tone === 'rose'} />
+      </div>
+      <h3 className="font-pixel t8 text-center shadow-text" style={{ color: f.accent }}>{f.name}</h3>
+      <p className="b9 text-center text-mist" style={{ minHeight: u(24) }}>{f.title}</p>
+      <dl className="b9 w-full" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: `${u(2)} ${u(4)}`, alignItems: 'center' }}>
+        <dt>Poder</dt><dd><Pips value={f.power} color={f.accent} /></dd>
+        <dt>Velocidad</dt><dd><Pips value={f.speed} color={f.accent} /></dd>
+        <dt>Defensa</dt><dd><Pips value={f.defense} color={f.accent} /></dd>
+      </dl>
+      <p className="b9 w-full text-center" style={{ color: f.accent }}>{f.special}</p>
+    </div>
+  );
+}

@@ -10,66 +10,6 @@ export interface Hitbox {
   height: number;
 }
 
-export interface AttackDefinition {
-  name: string;
-  type: 'light' | 'heavy' | 'special' | 'super';
-  baseDamage: number;
-  hitstunMs: number;
-  knockbackX: number;
-  knockbackY: number;
-  meterGain: number; // Meter awarded to attacker
-  superCost?: number; // Meter consumed
-}
-
-export const ATTACK_DATA: Record<string, AttackDefinition> = {
-  light: {
-    name: 'Light Strike',
-    type: 'light',
-    baseDamage: 7,
-    hitstunMs: 220,
-    knockbackX: 3.5,
-    knockbackY: -2,
-    meterGain: 8,
-  },
-  heavy: {
-    name: 'Heavy Strike',
-    type: 'heavy',
-    baseDamage: 14,
-    hitstunMs: 380,
-    knockbackX: 6.5,
-    knockbackY: -4,
-    meterGain: 15,
-  },
-  special1: {
-    name: 'Spirit Flame / Charge',
-    type: 'special',
-    baseDamage: 18,
-    hitstunMs: 440,
-    knockbackX: 8.0,
-    knockbackY: -5,
-    meterGain: 20,
-  },
-  special2: {
-    name: 'Fiesta Quake / Scythe Rush',
-    type: 'special',
-    baseDamage: 22,
-    hitstunMs: 500,
-    knockbackX: 9.0,
-    knockbackY: -7,
-    meterGain: 22,
-  },
-  super: {
-    name: 'Calavera Climax Super',
-    type: 'super',
-    baseDamage: 40,
-    hitstunMs: 800,
-    knockbackX: 12.0,
-    knockbackY: -9,
-    meterGain: 0,
-    superCost: 100,
-  },
-};
-
 /**
  * Calculates damage with combo scaling (damage decay per consecutive hit in combo)
  */
@@ -110,16 +50,10 @@ export function canExecuteSuper(meter: number): boolean {
 }
 
 /**
- * Check match outcome given two player health values
+ * Timeout winner by remaining health ratio (both fighters have 100 maximum HP).
  */
-export function evaluateRoundWinner(
-  p1Health: number,
-  p2Health: number
-): 'P1' | 'P2' | 'DRAW' | 'IN_PROGRESS' {
-  if (p1Health <= 0 && p2Health <= 0) return 'DRAW';
-  if (p1Health <= 0) return 'P2';
-  if (p2Health <= 0) return 'P1';
-  return 'IN_PROGRESS';
+export function resolveTimeout(p1Health: number, p2Health: number): 'P1' | 'P2' | 'DRAW' {
+  return p1Health > p2Health ? 'P1' : p2Health > p1Health ? 'P2' : 'DRAW';
 }
 
 /**

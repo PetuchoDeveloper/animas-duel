@@ -7,6 +7,7 @@ import { packSheet, writePng } from './lib/sheet.mjs';
 import { Img, blit } from './lib/raster.mjs';
 import { packEffects } from './fx.mjs';
 import { STAGES } from './stages.mjs';
+import { writeUi } from './ui.mjs';
 
 const OUT = resolve('src/assets/sprites');
 const IDS = ['bean', 'flea', 'ernesto', 'elmacho', 'huesos'];
@@ -47,3 +48,7 @@ STAGES.forEach((paint, i) => {
   writePng(resolve(STAGE_OUT, `stage${i + 1}-back.png`), back);
   writePng(resolve(STAGE_OUT, `stage${i + 1}-fg.png`), fg);
 });
+
+const UI_OUT = resolve('src/assets/ui');
+mkdirSync(UI_OUT, { recursive: true });
+writeUi(UI_OUT);
