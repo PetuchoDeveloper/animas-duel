@@ -8,6 +8,7 @@ const SHELL = { d: '#2d1710', s: '#4f2a18', m: '#78431f', l: '#a2652f', h: '#d08
 const BELLY = { d: '#6b3d1c', s: '#a2642c', m: '#d29552', l: '#edbd78', h: '#fde0a6', ink: '#3a1e0c' };
 const GLOVE = { d: '#7a2c08', s: '#c3481a', m: '#f2822a', l: '#ffb04a', h: '#ffdc90', ink: '#4a1a06' };
 const CUFF = { d: '#8c7c5c', s: '#c8bc96', m: '#ece3c8', l: '#fffaee', h: '#ffffff', ink: '#4a3a24' };
+const TRUNK = { d: '#4a0c1a', s: '#8a1c2e', m: '#c4303c', l: '#ee5a52', h: '#ff9a84', ink: '#2e0710' };
 const JAW = { d: '#7a2c08', s: '#c3481a', m: '#f2822a', l: '#ffb04a', h: '#ffdc90', ink: '#4a1a06' };
 
 export const meta = { id: 'flea', name: 'La Pulguita' };
@@ -78,9 +79,31 @@ function drawFrame(p) {
     ellipse(L, J.shF[0], J.shF[1], 5.4, 5.2, lit(SHELL), SHELL.ink);
   });
 
+  // boxing trunks with a cream waistband
+  part(img, (L) => {
+    const a = [pelvis[0] - up[0] * 3, pelvis[1] - up[1] * 3];
+    const b = [pelvis[0] + up[0] * -5, pelvis[1] + 5];
+    capsule(L, a[0] + 1, a[1], b[0] + 1, b[1], 7.2, 8, lit(TRUNK, { dither: true }), TRUNK.ink);
+    for (const d of [0, 1]) line(L, a[0] - side[0] * 6.4 + 1, a[1] - side[1] * 6.4 + d, a[0] + side[0] * 6.4 + 1, a[1] + side[1] * 6.4 + d, C(d ? CUFF.s : CUFF.l));
+  });
+
+  // head band tail, behind the skull
+  part(img, (L) => {
+    const f = (p.ant ?? 0) * 0.25;
+    poly(L, [[head[0] - 9, head[1] - 4], [head[0] - 19 + f, head[1] - 7 + Math.abs(f) * 0.3], [head[0] - 15 + f, head[1] - 3], [head[0] - 21 + f, head[1] + 1], [head[0] - 9, head[1] - 1]], lit(TRUNK), TRUNK.ink, 2);
+  });
+
   // head
   part(img, (L) => {
     ellipse(L, head[0], head[1], 11.6, 10.2, lit(SHELL, { dither: true }), SHELL.ink);
+    // forehead band
+    for (let dx = -11; dx <= 11; dx++) {
+      const by = head[1] - 6 + 0.02 * dx * dx;
+      const inside = (dx / 11.6) ** 2 + ((by - head[1]) / 10.2) ** 2 < 0.97;
+      if (!inside) continue;
+      L.set(Math.round(head[0] + dx), Math.round(by), C(TRUNK.l), TRUNK.ink);
+      L.set(Math.round(head[0] + dx), Math.round(by) + 1, C(TRUNK.s), TRUNK.ink);
+    }
     // heavy orange jaw
     const open = p.face === 'yell' || p.face === 'hurt' || p.face === 'ko';
     ellipse(L, head[0] + 4, head[1] + (open ? 7.6 : 6.4), 7.6, open ? 3.8 : 4, lit(JAW), JAW.ink);
@@ -95,12 +118,12 @@ function drawFrame(p) {
     const eye = (rows, dx, dy, ax, ay) => stamp(L, rows, EYE_PAL, head[0] + dx, head[1] + dy, { ax, ay });
     const brow = (x0, y0, x1, y1) => { for (const d of [0, 1]) line(L, head[0] + x0, head[1] + y0 + d, head[0] + x1, head[1] + y1 + d, C('#160c14')); };
     switch (p.face) {
-      case 'yell': eye(EYE_WIDE, -6, -2, 3, 3); eye(EYE_WIDE, 4, -2, 3, 3); brow(-11, -10, -1, -6); brow(2, -6, 12, -10); break;
+      case 'yell': eye(EYE_WIDE, -6, -1, 3, 3); eye(EYE_WIDE, 4, -1, 3, 3); break;
       case 'hurt': eye(EYE_SQUINT_L, -3, -2, 2, 2); eye(EYE_SQUINT_R, 6, -2, 2, 2); brow(-9, -7, -2, -4); brow(3, -4, 11, -7); break;
       case 'ko': eye(EYE_X, -3, -2, 2, 2); eye(EYE_X, 6, -2, 2, 2); break;
       case 'smug': eye(EYE_HAPPY, -3, -2, 3, 1); eye(EYE_HAPPY, 6, -2, 3, 1); break;
       case 'blink': eye(EYE_SHUT, -4, -2, 2, 0); eye(EYE_SHUT, 5, -2, 2, 0); break;
-      default: eye(EYE_WIDE, -6, -2, 3, 3); eye(EYE_WIDE, 4, -2, 3, 3); brow(-11, -9, -1, -6); brow(2, -6, 12, -9);
+      default: eye(EYE_WIDE, -6, -1, 3, 3); eye(EYE_WIDE, 4, -1, 3, 3); 
     }
   });
 

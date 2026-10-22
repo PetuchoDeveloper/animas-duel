@@ -1,0 +1,612 @@
+{
+ "bean": {
+  "cell": [
+   128,
+   112
+  ],
+  "anchor": [
+   64,
+   100
+  ],
+  "anims": {
+   "idle": {
+    "row": 0,
+    "frames": 4,
+    "fps": 6,
+    "loop": true
+   },
+   "walk": {
+    "row": 1,
+    "frames": 6,
+    "fps": 11,
+    "loop": true
+   },
+   "jump": {
+    "row": 2,
+    "frames": 3,
+    "fps": 1,
+    "loop": false
+   },
+   "land": {
+    "row": 3,
+    "frames": 1,
+    "fps": 1,
+    "loop": false
+   },
+   "light": {
+    "row": 4,
+    "frames": 4,
+    "fps": 12,
+    "loop": false,
+    "strike": [
+     1,
+     2
+    ]
+   },
+   "heavy": {
+    "row": 5,
+    "frames": 5,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     2,
+     3
+    ]
+   },
+   "air": {
+    "row": 6,
+    "frames": 3,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     1,
+     2
+    ]
+   },
+   "special": {
+    "row": 7,
+    "frames": 5,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     2,
+     3
+    ]
+   },
+   "super": {
+    "row": 8,
+    "frames": 6,
+    "fps": 8,
+    "loop": false,
+    "strike": [
+     4,
+     4
+    ]
+   },
+   "hit": {
+    "row": 9,
+    "frames": 3,
+    "fps": 10,
+    "loop": false
+   },
+   "ko": {
+    "row": 10,
+    "frames": 5,
+    "fps": 8,
+    "loop": false
+   },
+   "getup": {
+    "row": 11,
+    "frames": 3,
+    "fps": 8,
+    "loop": false
+   },
+   "dodge": {
+    "row": 12,
+    "frames": 3,
+    "fps": 10,
+    "loop": false
+   },
+   "block": {
+    "row": 13,
+    "frames": 2,
+    "fps": 4,
+    "loop": true
+   },
+   "win": {
+    "row": 14,
+    "frames": 4,
+    "fps": 6,
+    "loop": true
+   }
+  }
+ },
+ "flea": {
+  "cell": [
+   128,
+   112
+  ],
+  "anchor": [
+   64,
+   100
+  ],
+  "anims": {
+   "idle": {
+    "row": 0,
+    "frames": 4,
+    "fps": 6,
+    "loop": true
+   },
+   "walk": {
+    "row": 1,
+    "frames": 6,
+    "fps": 11,
+    "loop": true
+   },
+   "jump": {
+    "row": 2,
+    "frames": 3,
+    "fps": 1,
+    "loop": false
+   },
+   "land": {
+    "row": 3,
+    "frames": 1,
+    "fps": 1,
+    "loop": false
+   },
+   "light": {
+    "row": 4,
+    "frames": 4,
+    "fps": 12,
+    "loop": false,
+    "strike": [
+     1,
+     2
+    ]
+   },
+   "heavy": {
+    "row": 5,
+    "frames": 5,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     2,
+     3
+    ]
+   },
+   "air": {
+    "row": 6,
+    "frames": 3,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     1,
+     2
+    ]
+   },
+   "special": {
+    "row": 7,
+    "frames": 5,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     2,
+     3
+    ]
+   },
+   "super": {
+    "row": 8,
+    "frames": 6,
+    "fps": 8,
+    "loop": false,
+    "strike": [
+     4,
+     5
+    ]
+   },
+   "hit": {
+    "row": 9,
+    "frames": 3,
+    "fps": 10,
+    "loop": false
+   },
+   "ko": {
+    "row": 10,
+    "frames": 5,
+    "fps": 8,
+    "loop": false
+   },
+   "getup": {
+    "row": 11,
+    "frames": 3,
+    "fps": 8,
+    "loop": false
+   },
+   "dodge": {
+    "row": 12,
+    "frames": 3,
+    "fps": 10,
+    "loop": false
+   },
+   "block": {
+    "row": 13,
+    "frames": 2,
+    "fps": 4,
+    "loop": true
+   },
+   "win": {
+    "row": 14,
+    "frames": 4,
+    "fps": 6,
+    "loop": true
+   }
+  }
+ },
+ "ernesto": {
+  "cell": [
+   128,
+   112
+  ],
+  "anchor": [
+   64,
+   100
+  ],
+  "anims": {
+   "idle": {
+    "row": 0,
+    "frames": 4,
+    "fps": 6,
+    "loop": true
+   },
+   "walk": {
+    "row": 1,
+    "frames": 6,
+    "fps": 11,
+    "loop": true
+   },
+   "jump": {
+    "row": 2,
+    "frames": 3,
+    "fps": 1,
+    "loop": false
+   },
+   "land": {
+    "row": 3,
+    "frames": 1,
+    "fps": 1,
+    "loop": false
+   },
+   "light": {
+    "row": 4,
+    "frames": 4,
+    "fps": 12,
+    "loop": false,
+    "strike": [
+     1,
+     2
+    ]
+   },
+   "heavy": {
+    "row": 5,
+    "frames": 5,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     2,
+     3
+    ]
+   },
+   "air": {
+    "row": 6,
+    "frames": 3,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     1,
+     2
+    ]
+   },
+   "special": {
+    "row": 7,
+    "frames": 5,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     2,
+     3
+    ]
+   },
+   "super": {
+    "row": 8,
+    "frames": 6,
+    "fps": 8,
+    "loop": false,
+    "strike": [
+     3,
+     4
+    ]
+   },
+   "hit": {
+    "row": 9,
+    "frames": 3,
+    "fps": 10,
+    "loop": false
+   },
+   "ko": {
+    "row": 10,
+    "frames": 5,
+    "fps": 8,
+    "loop": false
+   },
+   "getup": {
+    "row": 11,
+    "frames": 3,
+    "fps": 8,
+    "loop": false
+   },
+   "dodge": {
+    "row": 12,
+    "frames": 3,
+    "fps": 10,
+    "loop": false
+   },
+   "block": {
+    "row": 13,
+    "frames": 2,
+    "fps": 4,
+    "loop": true
+   },
+   "win": {
+    "row": 14,
+    "frames": 4,
+    "fps": 6,
+    "loop": true
+   }
+  }
+ },
+ "elmacho": {
+  "cell": [
+   128,
+   112
+  ],
+  "anchor": [
+   64,
+   100
+  ],
+  "anims": {
+   "idle": {
+    "row": 0,
+    "frames": 4,
+    "fps": 6,
+    "loop": true
+   },
+   "walk": {
+    "row": 1,
+    "frames": 6,
+    "fps": 9,
+    "loop": true
+   },
+   "jump": {
+    "row": 2,
+    "frames": 3,
+    "fps": 1,
+    "loop": false
+   },
+   "land": {
+    "row": 3,
+    "frames": 1,
+    "fps": 1,
+    "loop": false
+   },
+   "light": {
+    "row": 4,
+    "frames": 4,
+    "fps": 12,
+    "loop": false,
+    "strike": [
+     1,
+     2
+    ]
+   },
+   "heavy": {
+    "row": 5,
+    "frames": 5,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     2,
+     3
+    ]
+   },
+   "air": {
+    "row": 6,
+    "frames": 3,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     1,
+     2
+    ]
+   },
+   "special": {
+    "row": 7,
+    "frames": 5,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     2,
+     3
+    ]
+   },
+   "super": {
+    "row": 8,
+    "frames": 6,
+    "fps": 8,
+    "loop": false,
+    "strike": [
+     4,
+     5
+    ]
+   },
+   "hit": {
+    "row": 9,
+    "frames": 3,
+    "fps": 10,
+    "loop": false
+   },
+   "ko": {
+    "row": 10,
+    "frames": 5,
+    "fps": 8,
+    "loop": false
+   },
+   "getup": {
+    "row": 11,
+    "frames": 3,
+    "fps": 8,
+    "loop": false
+   },
+   "dodge": {
+    "row": 12,
+    "frames": 3,
+    "fps": 10,
+    "loop": false
+   },
+   "block": {
+    "row": 13,
+    "frames": 2,
+    "fps": 4,
+    "loop": true
+   },
+   "win": {
+    "row": 14,
+    "frames": 4,
+    "fps": 6,
+    "loop": true
+   }
+  }
+ },
+ "huesos": {
+  "cell": [
+   128,
+   112
+  ],
+  "anchor": [
+   64,
+   100
+  ],
+  "anims": {
+   "idle": {
+    "row": 0,
+    "frames": 4,
+    "fps": 6,
+    "loop": true
+   },
+   "walk": {
+    "row": 1,
+    "frames": 6,
+    "fps": 11,
+    "loop": true
+   },
+   "jump": {
+    "row": 2,
+    "frames": 3,
+    "fps": 1,
+    "loop": false
+   },
+   "land": {
+    "row": 3,
+    "frames": 1,
+    "fps": 1,
+    "loop": false
+   },
+   "light": {
+    "row": 4,
+    "frames": 4,
+    "fps": 12,
+    "loop": false,
+    "strike": [
+     1,
+     2
+    ]
+   },
+   "heavy": {
+    "row": 5,
+    "frames": 5,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     2,
+     3
+    ]
+   },
+   "air": {
+    "row": 6,
+    "frames": 3,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     1,
+     2
+    ]
+   },
+   "special": {
+    "row": 7,
+    "frames": 5,
+    "fps": 10,
+    "loop": false,
+    "strike": [
+     2,
+     3
+    ]
+   },
+   "super": {
+    "row": 8,
+    "frames": 6,
+    "fps": 8,
+    "loop": false,
+    "strike": [
+     4,
+     5
+    ]
+   },
+   "hit": {
+    "row": 9,
+    "frames": 3,
+    "fps": 10,
+    "loop": false
+   },
+   "ko": {
+    "row": 10,
+    "frames": 5,
+    "fps": 8,
+    "loop": false
+   },
+   "getup": {
+    "row": 11,
+    "frames": 3,
+    "fps": 8,
+    "loop": false
+   },
+   "dodge": {
+    "row": 12,
+    "frames": 3,
+    "fps": 10,
+    "loop": false
+   },
+   "block": {
+    "row": 13,
+    "frames": 2,
+    "fps": 4,
+    "loop": true
+   },
+   "win": {
+    "row": 14,
+    "frames": 4,
+    "fps": 6,
+    "loop": true
+   }
+  }
+ }
+}
