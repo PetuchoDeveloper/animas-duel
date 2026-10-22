@@ -1,0 +1,6 @@
+{
+  "name": "Duelo de las Ánimas: The King of Fiesta",
+  "description": "Fast-paced Day of the Dead arcade fighting game inspired by classic fighters with 3 damaged sombrero stages, story dialogues, and local multiplayer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
