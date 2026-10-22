@@ -38,6 +38,12 @@ export interface SimProjectile {
   id: number; owner: Slot; kind: string; x: number; y: number; vx: number;
   facing: 1 | -1; life: number; w: number; h: number;
 }
+export type HazardKind = 'barrel' | 'anvil';
+export interface SimHazard {
+  readonly id: number; readonly kind: HazardKind;
+  readonly x: number; readonly y: number; readonly vx: number; readonly vy: number;
+  readonly warn: number; readonly landed: number; readonly dir: 1 | -1;
+}
 export type SimEvent =
   | { type: 'roundStart'; round: number } | { type: 'fight' }
   | { type: 'swing'; slot: Slot; state: FighterState }
@@ -45,6 +51,9 @@ export type SimEvent =
   | { type: 'hit'; attacker: Slot; defender: Slot; move: MoveId | 'projectile'; damage: number;
       blocked: boolean; x: number; y: number; combo: number; knockdown: boolean }
   | { type: 'super'; slot: Slot } | { type: 'projectile'; slot: Slot; kind: string }
+  | { type: 'hazardWarn'; kind: HazardKind; x: number }
+  | { type: 'hazardHit'; slot: Slot; kind: HazardKind; damage: number; blocked: boolean; x: number; y: number }
+  | { type: 'hazardLand'; x: number }
   | { type: 'ko'; slot: Slot } | { type: 'timeout' }
   | { type: 'roundEnd'; winner: Slot | 'draw' } | { type: 'matchEnd'; winner: Slot };
 
@@ -53,6 +62,10 @@ const PRESSES: Press[] = ['super', 'special', 'heavy', 'light', 'dodge', 'up'];
 const MIN_X = 28;
 const MAX_X = 452;
 const GRAVITY = 0.28;
+const BARREL_FIRST = 480, BARREL_INTERVAL = 600, BARREL_WARN = 50;
+const ANVIL_FIRST = 420, ANVIL_INTERVAL = 480, ANVIL_WARN = 55;
+const BARREL_SPEED = 2.2, BARREL_SIZE = 28;
+const ANVIL_SPEED = 7, ANVIL_TOP = -260, ANVIL_LANDED = 6;
 type Fighter = { -readonly [K in keyof SimFighter]: SimFighter[K] } & {
   move: MoveId | null;
   generation: number;
@@ -68,10 +81,14 @@ type Fighter = { -readonly [K in keyof SimFighter]: SimFighter[K] } & {
   buffer: Partial<Record<Press, number>>;
 };
 type Projectile = SimProjectile & { move: Move; generation: number };
+type Hazard = { -readonly [K in keyof SimHazard]: SimHazard[K] } & { hit: [boolean, boolean] };
 interface Contact {
   attacker: Fighter; defender: Fighter; move: Move; id: MoveId | 'projectile';
   direction: 1 | -1; blocked: boolean; airborne: boolean; juggling: boolean;
   generation: number;
+}
+interface HazardContact {
+  hazard: Hazard; defender: Fighter; blocked: boolean; juggling: boolean;
 }
 
 export class Sim {
@@ -79,6 +96,10 @@ export class Sim {
   private ids: [string, string];
   private pair!: [Fighter, Fighter];
   private shots: Projectile[] = [];
+  private trouble: 'barrels' | 'anvils' | null;
+  private troubleTicks = 0;
+  private nextHazardId = 1;
+  private obstacles: Hazard[] = [];
   private previous: [Input, Input] = [{ ...NO_INPUT }, { ...NO_INPUT }];
   private clock = 0;
   private nextProjectileId = 1;
@@ -93,18 +114,21 @@ export class Sim {
   hitstop = 0;
   matchWinner: Slot | null = null;
 
-  constructor(opts: { p1: string; p2: string; mode: GameMode; rng?: () => number }) {
+  constructor(opts: { p1: string; p2: string; mode: GameMode; rng?: () => number;
+    trouble?: 'barrels' | 'anvils' | null }) {
     if (!Object.hasOwn(CHARACTER_COMBAT, opts.p1) || !Object.hasOwn(CHARACTER_COMBAT, opts.p2)) {
       throw new RangeError('Unknown combat character');
     }
     this.ids = [opts.p1, opts.p2];
     this.mode = opts.mode;
+    this.trouble = opts.trouble ?? null;
     // Combat has no random outcomes. Controllers own their injected RNG streams.
     this.reset();
   }
 
   get fighters(): [SimFighter, SimFighter] { return this.pair; }
   get projectiles(): SimProjectile[] { return this.shots; }
+  get hazards(): SimHazard[] { return this.obstacles; }
   get timeLeft(): number { return Math.ceil(this.timeTicks / TICK_RATE); }
 
   reset(): void {
@@ -112,6 +136,7 @@ export class Sim {
     this.roundNumber = 1;
     this.matchWinner = null;
     this.nextProjectileId = 1;
+    this.nextHazardId = 1;
     this.previous = [{ ...NO_INPUT }, { ...NO_INPUT }];
     this.events = [];
     this.pair = [this.makeFighter(0), this.makeFighter(1)];
@@ -141,6 +166,8 @@ export class Sim {
     this.freeze = this.hitstop = 0;
     this.superUser = null;
     this.shots = [];
+    this.obstacles = [];
+    this.troubleTicks = 0;
     this.roundWinner = 'draw';
   }
 
@@ -185,7 +212,9 @@ export class Sim {
     for (const f of this.pair) this.updateFlags(f);
     this.updateProjectiles();
     const contacts = this.collectContacts();
+    const hazardContacts = this.stepHazards();
     for (const contact of contacts) this.applyContact(contact);
+    for (const contact of hazardContacts) this.applyHazardContact(contact);
     // Contacts can add pushback, but centres remain within walls at every step.
     this.pushboxes();
     if (this.mode === 'training') {
@@ -439,11 +468,84 @@ export class Sim {
     return { x: p.x - p.w / 2, y: p.y - p.h / 2, width: p.w, height: p.h };
   }
 
+  private stepHazards(): HazardContact[] {
+    const contacts: HazardContact[] = [];
+    if (!this.trouble || this.mode === 'training') return contacts;
+    this.troubleTicks++;
+    for (const h of this.obstacles) {
+      if (h.warn > 0) {
+        if (--h.warn > 0) continue;
+        // The first active tick exposes the entry/top position before movement.
+        if (h.kind === 'barrel') h.vx = h.dir * BARREL_SPEED;
+        else { h.y = ANVIL_TOP; h.vy = ANVIL_SPEED; }
+      } else if (h.kind === 'barrel') h.x += h.vx;
+      else if (h.landed > 0) h.landed++;
+      else {
+        h.y = Math.min(0, h.y + h.vy);
+        if (h.y === 0) {
+          h.vy = 0; h.landed = 1;
+          this.events.push({ type: 'hazardLand', x: h.x });
+        }
+      }
+      if (h.x < -24 || h.x > 504 || h.landed > ANVIL_LANDED) continue;
+      const barrel = h.kind === 'barrel';
+      const box = { x: h.x - (barrel ? BARREL_SIZE / 2 : 13),
+        y: h.y - (barrel ? BARREL_SIZE : 30), width: barrel ? BARREL_SIZE : 26,
+        height: barrel ? BARREL_SIZE : 30 };
+      for (const d of this.pair) {
+        if (h.hit[d.slot] || d.invuln || d.state === 'ko' || d.health === 0
+          || (barrel && d.y < -14) || !checkCollision(box, this.hurtbox(d))) continue;
+        h.hit[d.slot] = true;
+        contacts.push({ hazard: h, defender: d, blocked: this.isGuarding(d),
+          juggling: d.state === 'knockdown' && !d.lying });
+      }
+    }
+    this.obstacles = this.obstacles.filter(h => h.x >= -24 && h.x <= 504 && h.landed <= ANVIL_LANDED);
+    const barrel = this.trouble === 'barrels';
+    const first = barrel ? BARREL_FIRST : ANVIL_FIRST;
+    const interval = barrel ? BARREL_INTERVAL : ANVIL_INTERVAL;
+    if (this.troubleTicks < first || (this.troubleTicks - first) % interval !== 0) return contacts;
+    const index = (this.troubleTicks - first) / interval;
+    const dir = barrel && index % 2 === 0 ? -1 : 1;
+    const kind = barrel ? 'barrel' : 'anvil';
+    const x = barrel ? (dir === 1 ? -24 : 504)
+      : Math.max(MIN_X + 10, Math.min(MAX_X - 10, this.pair[index % 2].x));
+    this.obstacles.push({ id: this.nextHazardId++, kind, x, y: 0, vx: 0, vy: 0,
+      warn: barrel ? BARREL_WARN : ANVIL_WARN, landed: 0, dir, hit: [false, false] });
+    this.events.push({ type: 'hazardWarn', kind, x });
+    return contacts;
+  }
+
+  private applyHazardContact(c: HazardContact): void {
+    const { hazard: h, defender: d, blocked, juggling } = c;
+    if (d.health === 0) return;
+    const barrel = h.kind === 'barrel';
+    const damage = blocked ? this.chipDamage(d, barrel ? 9 : 13, 0.2, 1)
+      : Math.min(d.health, barrel ? 9 : 13);
+    const heavy = getMove(d.charId, 'heavy');
+    const vy = juggling ? d.vy : -4.5;
+    this.enter(d, blocked ? 'block' : 'knockdown', blocked ? heavy.blockstun : this.fallTicks(d.y, vy) + 30);
+    if (!blocked) d.vy = vy;
+    d.vx = barrel ? h.dir * (blocked ? heavy.blockKnockback : heavy.knockback) : 0;
+    this.hurt(d, damage, 0, juggling);
+    this.hitstop = Math.max(this.hitstop, heavy.hitstop);
+    this.events.push({ type: 'hazardHit', slot: d.slot, kind: h.kind, damage, blocked,
+      x: d.x, y: d.y - CHARACTER_COMBAT[d.charId].hurtbox.h / 2 });
+  }
+
+  private isGuarding(d: Fighter): boolean {
+    return d.y === 0 && (d.state === 'block' || (this.actionable(d) && d.guarding));
+  }
+
+  private chipDamage(d: Fighter, base: number, chip: number, floor: number): number {
+    return Math.min(Math.max(1, Math.round(base * chip)), Math.max(0, d.health - floor));
+  }
+
   private collectContacts(): Contact[] {
     const contacts: Contact[] = [];
     const contact = (a: Fighter, d: Fighter, m: Move, id: MoveId | 'projectile', direction: 1 | -1, generation: number) => {
       contacts.push({ attacker: a, defender: d, move: m, id, direction, generation,
-        blocked: d.y === 0 && (d.state === 'block' || (this.actionable(d) && d.guarding)),
+        blocked: this.isGuarding(d),
         airborne: d.y < 0, juggling: d.state === 'knockdown' && !d.lying });
     };
     for (const a of this.pair) {
@@ -480,7 +582,7 @@ export class Sim {
     if (blocked) {
       const chip = c.id === 'super' ? 0.25 : c.id === 'special' || c.id === 'projectile' ? 0.2 : 0.12;
       const floor = c.id === 'super' ? minimum : 1;
-      damage = Math.min(Math.max(1, Math.round(base * chip)), Math.max(0, d.health - floor));
+      damage = this.chipDamage(d, base, chip, floor);
       this.enter(d, 'block', m.blockstun);
       d.vx = direction * m.blockKnockback;
       a.vx -= direction * m.blockKnockback * 0.5;
@@ -502,22 +604,27 @@ export class Sim {
       }
       d.vx = direction * m.knockback;
     }
-    d.health = Math.max(minimum, d.health - damage);
-    d.lastHurt = this.clock;
-    d.flash = 8;
     a.meter = addSuperMeter(a.meter, m.meterGain * (blocked ? 0.5 : 1));
     d.meter = addSuperMeter(d.meter, blocked ? 3 : Math.max(2, m.meterGain * 0.4));
     this.hitstop = Math.max(this.hitstop, m.hitstop);
-    if (d.health === 0) {
-      knockdown = true;
-      this.enter(d, 'ko');
-      d.vy = c.juggling ? d.vy : -4.5;
-      this.events.push({ type: 'ko', slot: d.slot });
-    }
-    this.updateFlags(d);
+    this.hurt(d, damage, minimum, c.juggling);
+    if (d.health === 0) knockdown = true;
     this.events.push({ type: 'hit', attacker: a.slot, defender: d.slot, move: c.id,
       damage, blocked, x: d.x, y: d.y - CHARACTER_COMBAT[d.charId].hurtbox.h / 2,
       combo: blocked ? 0 : a.comboHits, knockdown });
+  }
+
+  /** Projectiles and arena hazards share health loss and the single KO writer. */
+  private hurt(d: Fighter, damage: number, minimum: number, juggling: boolean): void {
+    d.health = Math.max(minimum, d.health - damage);
+    d.lastHurt = this.clock;
+    d.flash = 8;
+    if (d.health === 0) {
+      this.enter(d, 'ko');
+      d.vy = juggling ? d.vy : -4.5;
+      this.events.push({ type: 'ko', slot: d.slot });
+    }
+    this.updateFlags(d);
   }
 
   private fallTicks(y: number, vy: number): number {

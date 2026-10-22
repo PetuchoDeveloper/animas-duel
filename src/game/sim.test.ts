@@ -536,3 +536,308 @@ test('identical seeded inputs and pauses yield identical complete state; reset m
     assert.ok(getMove(charId, 'special').knockdown);
   }
 });
+
+function hazardReady(trouble: 'barrels' | 'anvils'): Sim {
+  const sim = new Sim({ p1: 'bean', p2: 'elmacho', mode: 'story', trouble });
+  ticks(sim, 90);
+  return sim;
+}
+function hazardHits(events: SimEvent[]): Extract<SimEvent, { type: 'hazardHit' }>[] {
+  return events.filter((e): e is Extract<SimEvent, { type: 'hazardHit' }> => e.type === 'hazardHit');
+}
+
+test('anvil matches are deterministic for 3000 scripted ticks including complete hazard state', () => {
+  const a = hazardReady('anvils');
+  const b = hazardReady('anvils');
+  let warnings = 0;
+  for (let t = 0; t < 3000; t++) {
+    const controls: [Input, Input] = [
+      input({ left: t % 300 < 80, right: t % 300 >= 150 && t % 300 < 230, up: t % 101 === 0 }),
+      input({ right: t % 240 < 60, left: t % 240 >= 120 && t % 240 < 180, special: t % 180 === 0 }),
+    ];
+    a.step(controls); b.step(controls);
+    warnings += a.events.filter(e => e.type === 'hazardWarn').length;
+    assert.deepEqual(JSON.parse(JSON.stringify(a)), JSON.parse(JSON.stringify(b)));
+  }
+  assert.ok(warnings > 0);
+  a.reset();
+  const fresh = new Sim({ p1: 'bean', p2: 'elmacho', mode: 'story', trouble: 'anvils' });
+  assert.deepEqual(JSON.parse(JSON.stringify(a)), JSON.parse(JSON.stringify(fresh)));
+});
+
+test('disabled trouble and training never create hazards or hazard events', () => {
+  const sims = [
+    new Sim({ p1: 'bean', p2: 'bean', mode: 'story' }),
+    new Sim({ p1: 'bean', p2: 'bean', mode: 'versus', trouble: null }),
+    ...(['barrels', 'anvils'] as const).map(trouble => new Sim({ p1: 'bean', p2: 'bean', mode: 'training', trouble })),
+  ];
+  for (const sim of sims) for (let t = 0; t < 3000; t++) {
+    sim.step([NO_INPUT, NO_INPUT]);
+    assert.equal(sim.hazards.length, 0);
+    assert.ok(!sim.events.some(e => e.type === 'hazardWarn' || e.type === 'hazardHit' || e.type === 'hazardLand'));
+  }
+});
+
+test('barrels roll through both grounded fighters once, clear jumps and use nonlethal projectile chip', () => {
+  const grounded = hazardReady('barrels');
+  const events = ticks(grounded, 840);
+  assert.deepEqual(hazardHits(events).map(e => [e.slot, e.damage, e.blocked]), [[1, 9, false], [0, 9, false]]);
+  assert.deepEqual(grounded.fighters.map(f => f.health), [91, 91]);
+  assert.deepEqual(grounded.fighters.map(f => f.meter), [0, 0]);
+  assert.equal(grounded.hazards.length, 0);
+
+  const jumping = hazardReady('barrels');
+  arrange(jumping, 0, { x: 440 }); arrange(jumping, 1, { x: 100 });
+  ticks(jumping, 530);
+  assert.equal(jumping.hazards[0].warn, 0);
+  jumping.step([input({ up: true }), NO_INPUT]);
+  const jumpEvents = ticks(jumping, 110);
+  assert.equal(jumping.fighters[0].health, 100);
+  assert.ok(!hazardHits(jumpEvents).some(e => e.slot === 0));
+
+  for (const health of [100, 1]) {
+    const guarding = hazardReady('barrels');
+    arrange(guarding, 0, { x: 440, health }); arrange(guarding, 1, { x: 100 });
+    ticks(guarding, 530);
+    const events: SimEvent[] = [];
+    for (let t = 0; t < 100 && !hazardHits(events).length; t++) {
+      events.push(...ticks(guarding, 1, input({ down: true })));
+    }
+    assert.equal(guarding.fighters[0].state, 'block');
+    assert.equal(guarding.fighters[0].vy, 0);
+    const blocked = hazardHits(events);
+    assert.deepEqual(blocked.map(e => [e.slot, e.damage, e.blocked]), [[0, health === 1 ? 0 : 2, true]]);
+    assert.equal(guarding.fighters[0].health, health === 1 ? 1 : 98);
+    assert.deepEqual(guarding.fighters.map(f => f.meter), [0, 0]);
+    assert.equal(hazardHits(ticks(guarding, 100, input({ down: true }))).length, 0);
+  }
+});
+
+test('anvils hold their target, hit either slot and airborne fighters, and allow walking out of danger', () => {
+  const stationary = hazardReady('anvils');
+  ticks(stationary, 420);
+  assert.equal(stationary.hazards[0].x, stationary.fighters[0].x);
+  const event = hazardHits(until(stationary, () => stationary.fighters[0].health < 100))[0];
+  assert.equal(event.damage, 13); assert.equal(event.blocked, false);
+  assert.equal(stationary.fighters[0].state, 'knockdown');
+  assert.equal(stationary.fighters[0].vx, 0);
+  assert.deepEqual(stationary.fighters.map(f => f.meter), [0, 0]);
+  assert.equal(hazardHits(ticks(stationary, 100)).length, 0);
+
+  const evade = hazardReady('anvils');
+  ticks(evade, 420);
+  const target = evade.hazards[0].x;
+  ticks(evade, 55, input({ left: true }));
+  assert.equal(evade.hazards[0].x, target);
+  assert.equal(evade.hazards[0].y, -260);
+  assert.equal(hazardHits(ticks(evade, 60)).length, 0);
+  assert.equal(evade.fighters[0].health, 100);
+
+  const lure = hazardReady('anvils');
+  arrange(lure, 1, { x: 250 });
+  ticks(lure, 420);
+  ticks(lure, 55, input({ left: true }));
+  arrange(lure, 1, { x: lure.hazards[0].x });
+  const lured = hazardHits(ticks(lure, 80));
+  assert.deepEqual(lured.map(e => [e.slot, e.damage]), [[1, 13]]);
+
+  const airborne = hazardReady('anvils');
+  ticks(airborne, 495);
+  airborne.step([input({ up: true }), NO_INPUT]);
+  const airHit = hazardHits(until(airborne, () => airborne.fighters[0].health < 100))[0];
+  assert.equal(airHit.blocked, false);
+  assert.ok(airborne.fighters[0].y < -14);
+
+  const top = hazardReady('anvils');
+  ticks(top, 474);
+  arrange(top, 0, { y: -260 });
+  ticks(top, 1);
+  assert.equal(top.hazards[0].warn, 0);
+  assert.equal(top.hazards[0].y, -260);
+  assert.equal(hazardHits(top.events).length, 1);
+
+  const guard = hazardReady('anvils');
+  ticks(guard, 475);
+  const chipEvents: SimEvent[] = [];
+  for (let t = 0; t < 60 && !hazardHits(chipEvents).length; t++) {
+    chipEvents.push(...ticks(guard, 1, input({ down: true })));
+  }
+  const chip = hazardHits(chipEvents);
+  assert.deepEqual(chip.map(e => [e.damage, e.blocked]), [[3, true]]);
+  assert.equal(guard.fighters[0].health, 97);
+  assert.equal(guard.fighters[0].state, 'block');
+  assert.equal(guard.fighters[0].vy, 0);
+  assert.deepEqual(guard.fighters.map(f => f.meter), [0, 0]);
+});
+
+test('hazard schedules, warnings, movement and six landed ticks use exact advancing fight ticks', () => {
+  for (const trouble of ['barrels', 'anvils'] as const) {
+    const sim = hazardReady(trouble);
+    // Keep fighters above the drop path to isolate scheduling from hitstop.
+    arrange(sim, 0, { x: 28, y: -1_000_000 });
+    arrange(sim, 1, { x: 452, y: -1_000_000 });
+    const first = trouble === 'barrels' ? 480 : 420;
+    const warning = trouble === 'barrels' ? 50 : 55;
+    const interval = trouble === 'barrels' ? 600 : 480;
+    ticks(sim, first - 1);
+    assert.equal(sim.hazards.length, 0);
+    ticks(sim, 1);
+    assert.equal(sim.events.filter(e => e.type === 'hazardWarn').length, 1);
+    assert.equal(sim.hazards[0].warn, warning);
+    assert.equal(sim.hazards[0].x, trouble === 'barrels' ? 504 : 38);
+    assert.equal(sim.hazards[0].vx, 0); assert.equal(sim.hazards[0].vy, 0);
+    ticks(sim, warning - 1);
+    assert.equal(sim.hazards[0].warn, 1);
+    ticks(sim, 1);
+    assert.equal(sim.hazards[0].warn, 0);
+    if (trouble === 'barrels') {
+      assert.equal(sim.hazards[0].x, 504); assert.equal(sim.hazards[0].vx, -2.2);
+      ticks(sim, 1);
+      assert.equal(sim.hazards[0].x, 501.8);
+      ticks(sim, interval - warning - 2);
+    } else {
+      assert.equal(sim.hazards[0].y, -260); assert.equal(sim.hazards[0].vy, 7);
+      ticks(sim, 37);
+      assert.equal(sim.hazards[0].y, -1); assert.equal(sim.hazards[0].landed, 0);
+      ticks(sim, 1);
+      assert.equal(sim.hazards[0].y, 0); assert.equal(sim.hazards[0].landed, 1);
+      assert.deepEqual(sim.events, [{ type: 'hazardLand', x: 38 }]);
+      ticks(sim, 5);
+      assert.equal(sim.hazards[0].landed, 6);
+      ticks(sim, 1);
+      assert.equal(sim.hazards.length, 0);
+      ticks(sim, interval - warning - 45);
+    }
+    assert.ok(!sim.events.some(e => e.type === 'hazardWarn'));
+    ticks(sim, 1);
+    assert.equal(sim.events.filter(e => e.type === 'hazardWarn').length, 1);
+    assert.equal(sim.hazards[0].x, trouble === 'barrels' ? -24 : 442);
+    assert.equal(sim.hazards[0].dir, 1);
+    ticks(sim, interval);
+    assert.equal(sim.events.filter(e => e.type === 'hazardWarn').length, 1);
+    assert.equal(sim.hazards[0].x, trouble === 'barrels' ? 504 : 38);
+    assert.deepEqual(sim.fighters.map(f => f.health), [100, 100]);
+  }
+});
+
+test('hazards and their schedules pause for super and hitstop and restart after a round', () => {
+  for (const trouble of ['barrels', 'anvils'] as const) {
+    const sim = new Sim({ p1: 'bean', p2: 'elmacho', mode: 'story', trouble });
+    ticks(sim, 89);
+    assert.equal(sim.hazards.length, 0);
+    ticks(sim, 1);
+    const first = trouble === 'barrels' ? 480 : 420;
+    ticks(sim, first - 1);
+    arrange(sim, 0, { meter: 100, x: 28 });
+    sim.step([input({ super: true }), NO_INPUT]);
+    assert.equal(sim.freeze, 36);
+    const time = sim.timeTicks;
+    ticks(sim, 36);
+    assert.equal(sim.timeTicks, time); assert.equal(sim.hazards.length, 0);
+    ticks(sim, 1);
+    assert.equal(sim.hazards[0].warn, trouble === 'barrels' ? 50 : 55);
+    arrange(sim, 1, { x: 62 });
+    until(sim, () => sim.hitstop > 0);
+    const frozen = JSON.stringify(sim.hazards);
+    const stoppedTime = sim.timeTicks;
+    ticks(sim, sim.hitstop);
+    assert.equal(JSON.stringify(sim.hazards), frozen);
+    assert.equal(sim.timeTicks, stoppedTime);
+    ticks(sim, 1);
+    assert.notEqual(JSON.stringify(sim.hazards), frozen);
+
+    // A second real super freezes an already rolling/falling hazard.
+    ticks(sim, 45);
+    arrange(sim, 0, { meter: 100 });
+    sim.step([input({ super: true }), NO_INPUT]);
+    assert.equal(sim.freeze, 36);
+    const visible = JSON.stringify(sim.hazards);
+    ticks(sim, 36);
+    assert.equal(JSON.stringify(sim.hazards), visible);
+    sim.timeTicks = 1;
+    ticks(sim, 1);
+    assert.equal(sim.phase, 'roundEnd');
+    const ended = JSON.stringify(sim.hazards);
+    ticks(sim, 149);
+    assert.equal(JSON.stringify(sim.hazards), ended);
+    ticks(sim, 1);
+    assert.equal(sim.phase, 'intro'); assert.equal(sim.hazards.length, 0);
+    ticks(sim, 90 + first - 1);
+    assert.equal(sim.hazards.length, 0);
+    ticks(sim, 1);
+    assert.equal(sim.hazards[0].x, trouble === 'barrels' ? 504 : sim.fighters[0].x);
+  }
+});
+
+test('hazard and projectile KOs share one KO and round-end sequence and award rounds once', () => {
+  const projectile = ready('bean', 'elmacho');
+  arrange(projectile, 0, { x: 100 }); arrange(projectile, 1, { x: 270, health: 1 });
+  projectile.step([input({ special: true }), NO_INPUT]);
+  const projectileEvents = until(projectile, () => projectile.phase === 'koFreeze');
+  projectileEvents.push(...ticks(projectile, 40));
+  const sequence = (events: SimEvent[]) => events.filter(e => e.type === 'ko' || e.type === 'roundEnd').map(e => e.type);
+  assert.deepEqual(sequence(projectileEvents), ['ko', 'roundEnd']);
+
+  for (const trouble of ['barrels', 'anvils'] as const) {
+    const sim = hazardReady(trouble);
+    const target: Slot = trouble === 'barrels' ? 1 : 0;
+    arrange(sim, target, { health: 1 });
+    const events = until(sim, () => sim.phase === 'koFreeze', 850);
+    assert.equal(hazardHits(events).length, 1);
+    assert.equal(sim.fighters[target].state, 'ko');
+    const stopped = JSON.stringify(sim.hazards);
+    events.push(...ticks(sim, 40));
+    assert.equal(JSON.stringify(sim.hazards), stopped);
+    assert.deepEqual(sequence(events), sequence(projectileEvents));
+    assert.equal(sim.fighters[1 - target].roundsWon, 1);
+    assert.equal(sim.fighters[target].roundsWon, 0);
+    ticks(sim, 150);
+    assert.equal(sim.hazards.length, 0);
+    assert.deepEqual(sim.fighters.map(f => f.health), [100, 100]);
+  }
+});
+
+test('invulnerability leaves hazards unspent, landed tick six still hurts, and simultaneous sources KO once', () => {
+  const late = hazardReady('anvils');
+  arrange(late, 0, { x: 28, meter: 17, comboHits: 12 });
+  arrange(late, 1, { meter: 23, comboHits: 12 });
+  ticks(late, 503);
+  // Dodge into the wall through the fall and the first five landed ticks.
+  late.step([input({ dodge: true }), NO_INPUT]);
+  assert.equal(late.fighters[0].invuln, true);
+  assert.equal(late.fighters[0].health, 100);
+  ticks(late, 13);
+  assert.equal(late.hazards[0].landed, 5);
+  assert.equal(late.fighters[0].health, 100);
+  ticks(late, 1);
+  assert.equal(late.hazards[0].landed, 6);
+  assert.deepEqual(hazardHits(late.events).map(e => [e.slot, e.damage]), [[0, 13]]);
+  assert.deepEqual(late.fighters.map(f => f.meter), [17, 23]);
+  assert.deepEqual(late.fighters.map(f => f.comboHits), [12, 12]);
+  ticks(late, late.hitstop);
+  ticks(late, 1);
+  assert.equal(late.hazards.length, 0);
+  assert.equal(late.fighters[0].health, 87);
+
+  for (const health of [1, 16]) {
+    const sim = new Sim({ p1: 'bean', p2: 'bean', mode: 'story', trouble: 'anvils' });
+    ticks(sim, 90);
+    arrange(sim, 1, { x: 400 });
+    ticks(sim, 480);
+    sim.step([NO_INPUT, input({ special: true })]);
+    until(sim, () => sim.projectiles.length === 1);
+    // Finish arranging the two independent sources immediately before contact.
+    until(sim, () => sim.timeTicks === 5940 - 503);
+    arrange(sim, 0, { health });
+    const p = sim.projectiles[0];
+    p.x = sim.fighters[0].x - p.facing * 15 - p.vx;
+    ticks(sim, 1);
+    assert.equal(sim.hazards[0].y, -57);
+    assert.equal(sim.phase, 'koFreeze');
+    const events = [...sim.events, ...ticks(sim, 40)];
+    assert.equal(hits(events).length, 1);
+    assert.equal(hazardHits(events).length, health === 1 ? 0 : 1);
+    assert.deepEqual(events.filter(e => e.type === 'ko' || e.type === 'roundEnd').map(e => e.type), ['ko', 'roundEnd']);
+    assert.deepEqual(sim.fighters.map(f => f.roundsWon), [0, 1]);
+  }
+});
