@@ -47,7 +47,7 @@ export class MusicEngine {
     this.ctx = ctx;
     const compressor = musicCompressor(ctx, out);
     this.music = ctx.createGain(); this.menu = ctx.createGain(); this.ducking = ctx.createGain(); this.stingers = ctx.createGain();
-    this.music.gain.value = 0.9; this.stingers.gain.value = 0.25;
+    this.music.gain.value = 0.9; this.stingers.gain.value = 1;
     this.music.connect(this.menu); this.menu.connect(this.ducking); this.ducking.connect(compressor); this.stingers.connect(compressor);
   }
   playTrack(id: TrackId, opts: { section?: string; fadeIn?: number } = {}): void {
