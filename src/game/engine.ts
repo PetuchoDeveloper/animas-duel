@@ -52,6 +52,8 @@ export class FightEngine {
   private overReported = false;
   /** Sim ticks of slow motion left after a knockout. */
   private slowTicks = 0;
+  /** El Macho's full motif plays on his first hazard of the match, a laugh on the rest. */
+  private troubleHeard = false;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -188,6 +190,7 @@ export class FightEngine {
       switch (e.type) {
         case 'roundStart':
           gameAudio.playAnnouncerCall(e.round === 1 ? 'round1' : e.round === 2 ? 'round2' : 'final_round');
+          if (e.round >= 3) gameAudio.jumpTo('final');
           break;
         case 'fight':
           gameAudio.playAnnouncerCall('ready_fight');
@@ -209,10 +212,24 @@ export class FightEngine {
           else if (e.move === 'light' || e.move === 'air') gameAudio.playLightHit();
           else gameAudio.playHeavyHit();
           if (e.move === 'super' && !e.blocked) gameAudio.playAnnouncerCall('super_finish');
+          // the same hits the renderer gives an impact frame
+          if (!e.blocked && (e.move === 'super' || e.move === 'special' || e.knockdown)) gameAudio.stinger('impact');
+          break;
+        case 'hazardWarn':
+          gameAudio.stinger(this.troubleHeard ? 'machoLaugh' : 'machoTrouble');
+          this.troubleHeard = true;
+          break;
+        case 'hazardHit':
+        case 'hazardLand':
+          gameAudio.playHeavyHit();
+          if (e.type === 'hazardHit' && e.kind === 'anvil' && !e.blocked) gameAudio.stinger('impact');
           break;
         case 'ko':
         case 'timeout':
-          if (e.type === 'ko') this.slowTicks = 36;
+          if (e.type === 'ko') {
+            this.slowTicks = 36;
+            gameAudio.stinger('ko');
+          }
           gameAudio.playAnnouncerCall('ko');
           break;
         case 'matchEnd':

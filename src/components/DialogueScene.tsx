@@ -27,6 +27,11 @@ export function DialogueScene({ dialogues, stage, title, onComplete }: DialogueS
   const done = shown >= line.spanishText.length;
   const timer = useRef(0);
 
+  // El Macho enters with his motif and laughs on every later line of the scene.
+  useEffect(() => {
+    if (line.speakerId === 'elmacho') gameAudio.stinger(dialogues.findIndex((l) => l.speakerId === 'elmacho') === index ? 'machoTrouble' : 'machoLaugh');
+  }, [index, line.speakerId, dialogues]);
+
   useEffect(() => {
     setShown(0);
     const start = performance.now();

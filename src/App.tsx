@@ -11,13 +11,16 @@ import { LoreModal, MatchModal } from './components/MatchModal';
 import { MapScreen } from './components/MapScreen';
 import { SplashScreen } from './components/SplashScreen';
 import { TitleScreen } from './components/TitleScreen';
-import { gameAudio } from './game/audio';
+import { gameAudio, type TrackId } from './game/audio';
 import { BOSSES, ROSTER, SOMBREROS } from './game/roster';
 import type { GameMode, Slot } from './game/sim';
 import { storyScene, TROUBLE, type DialogueLine, type SceneId } from './game/storyDialogues';
 
 type Screen = 'splash' | 'title' | 'select' | 'map' | 'dialogue' | 'battle' | 'epilogue';
 type Result = 'victory' | 'defeat' | null;
+
+/** Each arena has its boss's song, in every mode. */
+const ARENA_TRACKS: TrackId[] = ['ernesto', 'huesos', 'macho'];
 
 /**
  * Pixel art stays crisp only when each art pixel is a whole number of device pixels, so the 480x270
@@ -67,6 +70,14 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [screen, result, toggleMute]);
+
+  // The splash stays silent: browsers only allow sound after its click.
+  useEffect(() => {
+    if (screen === 'title' || screen === 'select') gameAudio.playTrack('title');
+    else if (screen === 'map' || screen === 'dialogue') gameAudio.playTrack('map');
+    else if (screen === 'epilogue') gameAudio.playTrack('ending');
+    else if (screen === 'battle') gameAudio.playTrack(result ?? ARENA_TRACKS[stage] ?? 'ernesto');
+  }, [screen, stage, result]);
 
   const startBattle = () => {
     setPaused(false);
