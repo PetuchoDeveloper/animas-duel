@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { CharacterSelect } from './components/CharacterSelect';
 import { DialogueScene } from './components/DialogueScene';
 import { FightCanvas } from './components/FightCanvas';
+import { IntroScreen } from './components/IntroScreen';
 import { LoreModal, MatchModal } from './components/MatchModal';
 import { MapScreen } from './components/MapScreen';
 import { SplashScreen } from './components/SplashScreen';
@@ -16,7 +17,7 @@ import { BOSSES, ROSTER, SOMBREROS } from './game/roster';
 import type { GameMode, Slot } from './game/sim';
 import { storyScene, TROUBLE, type DialogueLine, type SceneId } from './game/storyDialogues';
 
-type Screen = 'splash' | 'title' | 'select' | 'map' | 'dialogue' | 'battle' | 'epilogue';
+type Screen = 'splash' | 'intro' | 'title' | 'select' | 'map' | 'dialogue' | 'battle' | 'epilogue';
 type Result = 'victory' | 'defeat' | null;
 
 /** Each arena has its boss's song, in every mode. */
@@ -73,7 +74,8 @@ export default function App() {
 
   // The splash stays silent: browsers only allow sound after its click.
   useEffect(() => {
-    if (screen === 'title' || screen === 'select') gameAudio.playTrack('title');
+    if (screen === 'intro') gameAudio.stopBGM();
+    else if (screen === 'title' || screen === 'select') gameAudio.playTrack('title');
     else if (screen === 'map' || screen === 'dialogue') gameAudio.playTrack('map');
     else if (screen === 'epilogue') gameAudio.playTrack('ending');
     else if (screen === 'battle') gameAudio.playTrack(result ?? ARENA_TRACKS[stage] ?? 'ernesto');
@@ -135,6 +137,16 @@ export default function App() {
         {screen === 'splash' && (
           <SplashScreen
             onFinish={() => {
+              setScreen('intro');
+            }}
+          />
+        )}
+
+        {screen === 'intro' && (
+          <IntroScreen
+            isMuted={muted}
+            onToggleMute={toggleMute}
+            onFinish={() => {
               gameAudio.startBGM();
               setScreen('title');
             }}
@@ -146,6 +158,10 @@ export default function App() {
             onStartGame={(m) => {
               setMode(m);
               setScreen('select');
+            }}
+            onWatchIntro={() => {
+              gameAudio.stopBGM();
+              setScreen('intro');
             }}
             onOpenLore={() => setLore(true)}
             isMuted={muted}

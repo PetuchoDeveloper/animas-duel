@@ -4,8 +4,14 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    host: '0.0.0.0',
+    port: 3000,
+    allowedHosts: true,
+  },
   preview: {
-    // lets the Cloudflare quick tunnel (random *.trycloudflare.com host) reach `vite preview`
-    allowedHosts: ['.trycloudflare.com'],
+    host: '0.0.0.0',
+    port: 3000,
+    allowedHosts: true,
   },
 });

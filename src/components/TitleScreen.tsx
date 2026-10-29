@@ -2,7 +2,7 @@
  * Title screen: emblem, logo and the four ways into the game.
  */
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { url } from '../game/assets';
 import { gameAudio } from '../game/audio';
 import type { GameMode } from '../game/sim';
@@ -10,6 +10,7 @@ import { Backdrop, useArrowFocus, u } from './ui';
 
 interface TitleScreenProps {
   onStartGame: (mode: GameMode) => void;
+  onWatchIntro: () => void;
   onOpenLore: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
@@ -22,7 +23,7 @@ const ENTRIES: { label: string; hint: string; mode?: GameMode }[] = [
   { label: 'Mitología', hint: 'La leyenda' },
 ];
 
-export function TitleScreen({ onStartGame, onOpenLore, isMuted, onToggleMute }: TitleScreenProps) {
+export function TitleScreen({ onStartGame, onWatchIntro, onOpenLore, isMuted, onToggleMute }: TitleScreenProps) {
   const menu = useRef<HTMLDivElement>(null);
   useArrowFocus(menu, true);
 
@@ -36,15 +37,31 @@ export function TitleScreen({ onStartGame, onOpenLore, isMuted, onToggleMute }: 
     else onOpenLore();
   };
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      if (e.code === 'KeyI') {
+        onWatchIntro();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onWatchIntro]);
+
   return (
     <div className="layer select-none">
       <Backdrop stage={0} dim={0.55} />
 
       <div className="absolute flex items-center justify-between" style={{ top: u(8), left: u(12), right: u(8) }}>
         <span className="font-pixel t6 text-gold-hi shadow-text">Arcade del Día de Muertos</span>
-        <button type="button" className="btn btn-quiet" onClick={onToggleMute} aria-pressed={isMuted}>
-          Sonido: {isMuted ? 'no' : 'sí'} <span className="keycap">M</span>
-        </button>
+        <div className="flex items-center" style={{ gap: u(3) }}>
+          <button type="button" className="btn btn-quiet" onClick={onWatchIntro} title="Ver cinemática inicial">
+            Ver Intro <span className="keycap">I</span>
+          </button>
+          <button type="button" className="btn btn-quiet" onClick={onToggleMute} aria-pressed={isMuted}>
+            Sonido: {isMuted ? 'no' : 'sí'} <span className="keycap">M</span>
+          </button>
+        </div>
       </div>
 
       <div className="absolute inset-x-0 flex flex-col items-center" style={{ top: u(16), gap: u(3) }}>
@@ -71,7 +88,7 @@ export function TitleScreen({ onStartGame, onOpenLore, isMuted, onToggleMute }: 
       </div>
 
       <p className="b9 absolute inset-x-0 text-center text-mist shadow-text" style={{ bottom: u(6) }}>
-        Flechas para elegir · <span className="keycap">Enter</span> aceptar · <span className="keycap">Esc</span> pausa en combate
+        Flechas para elegir · <span className="keycap">Enter</span> aceptar · <span className="keycap">I</span> ver intro · <span className="keycap">Esc</span> pausa
       </p>
     </div>
   );
